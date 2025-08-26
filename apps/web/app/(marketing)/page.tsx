@@ -1,12 +1,15 @@
 "use client";
 
 import Container from "@/components/container";
+import useStore from "@/lib/store";
 import { Button } from "@workspace/ui/components/button";
 import { Input } from "@workspace/ui/components/input";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, PlusIcon } from "lucide-react";
 import { motion } from "motion/react";
 
 const Page = () => {
+  const { count, increment } = useStore();
+
   return (
     <Container className="h-[200vh]">
       <motion.h1
@@ -38,6 +41,11 @@ const Page = () => {
         placeholder="John Doe"
         type="password"
       />
+
+      <p>Count: {count}</p>
+      <Button variant={"ghost"} size={"icon"} onClick={increment}>
+        <PlusIcon />
+      </Button>
     </Container>
   );
 };
