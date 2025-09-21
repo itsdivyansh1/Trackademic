@@ -2,14 +2,14 @@ import { Request, Response, Router } from "express";
 import { login, logout, register } from "../../controllers/auth.controller";
 import { isAuthenticated } from "../../middlewares/auth.middleware";
 
-const authRouter = Router();
+const router = Router();
 
-authRouter.post("/register", register);
-authRouter.post("/login", login);
-authRouter.post("/logout", logout);
+router.post("/register", register);
+router.post("/login", login);
+router.post("/logout", logout);
 
-authRouter.get("/profile", isAuthenticated, (req: Request, res: Response) => {
+router.get("/profile", isAuthenticated, (req: Request, res: Response) => {
   res.json({ user: req.user });
 });
 
-export default authRouter;
+export default router;

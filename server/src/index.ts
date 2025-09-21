@@ -1,4 +1,5 @@
 import { RedisStore } from "connect-redis";
+import cors from "cors";
 import express from "express";
 import session from "express-session";
 import { redisClient } from "./config/db.conf";
@@ -7,6 +8,13 @@ import passport from "./config/passport.conf";
 import router from "./routes/index.route";
 
 const app = express();
+
+app.use(
+  cors({
+    origin: "http://localhost:3000", // your Next.js frontend
+    credentials: true, // allow cookies
+  })
+);
 
 app.use(express.json());
 

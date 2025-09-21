@@ -1,12 +1,14 @@
 import { NextFunction, Request, Response } from "express";
 import passport, { AuthenticateCallback } from "passport";
 import { getUserById, registerUser } from "../services/auth.service";
+import { RegisterSchema } from "../types/auth.types";
 
 //  Register
 export const register = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body as { email: string; password: string };
-    const user = await registerUser(email, password);
+    const data = RegisterSchema.parse(req.body);
+    const user = await registerUser(data); // Registering user here
+
     return res.status(201).json({ message: "User registered", user });
   } catch (err: any) {
     return res.status(400).json({ error: err.message });

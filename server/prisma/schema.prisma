@@ -14,7 +14,65 @@ datasource db {
 }
 
 model User {
-  id       Int    @id @default(autoincrement())
-  email    String @unique
-  password String
+  id         String  @id @default(uuid()) @db.Uuid
+  name       String
+  email      String  @unique
+  password   String
+  department String
+  stdId      String? // Only for students
+  phone      String
+  role       Role    @default(STUDENT)
+  isApproved Boolean @default(false) // Only admin can approve
+
+  achievements Achievement[] // relation with achievements
+  publications ResearchPublication[] // relation with research publications
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Achievement {
+  id          String     @id @default(uuid()) @db.Uuid
+  title       String
+  description String
+  category    String?
+  date        DateTime // optional achievement date
+  fileUrl     String // S3 file URL
+  visibility  Visibility @default(PUBLIC)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @db.Uuid
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ResearchPublication {
+  id                String     @id @default(uuid()) @db.Uuid
+  title             String
+  abstract          String // summary of publication
+  authors           Json? // list of authors (can be stored as CSV or JSON)
+  publicationYear   Int // optional year
+  journalConference String // Journal/Conference name
+  doi               String // DOI identifier
+  fileUrl           String // S3 file URL
+  publishedAt       DateTime // optional published date
+  visibility        Visibility @default(PUBLIC)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @db.Uuid
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  STUDENT
+  FACULTY
+  ADMIN
+}
+
+enum Visibility {
+  PUBLIC
+  PRIVATE
 }

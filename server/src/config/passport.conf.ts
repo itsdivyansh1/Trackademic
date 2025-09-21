@@ -6,7 +6,7 @@ import { prisma } from "../config/db.conf";
 // Local strategy
 passport.use(
   new LocalStrategy(
-    { usernameField: "email" }, // use email instead of username
+    { usernameField: "email" },
     async (email, password, done) => {
       try {
         const user = await prisma.user.findUnique({ where: { email } });
@@ -29,7 +29,7 @@ passport.serializeUser((user: any, done) => {
 });
 
 // Deserialize user - cache in session to reduce DB calls
-passport.deserializeUser(async (id: number, done) => {
+passport.deserializeUser(async (id: string, done) => {
   try {
     // Check if user data is already in session
     if (typeof id === "object" && id !== null) {
@@ -38,7 +38,18 @@ passport.deserializeUser(async (id: number, done) => {
 
     const user = await prisma.user.findUnique({
       where: { id },
-      select: { id: true, email: true }, // Don't select password
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        department: true,
+        stdId: true,
+        role: true,
+        isApproved: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
     done(null, user);
   } catch (err) {
