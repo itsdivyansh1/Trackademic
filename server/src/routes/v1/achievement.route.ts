@@ -1,12 +1,13 @@
 import { Router } from "express";
 import {
+  approve,
   create,
   listAllAchievements,
   listPublicAchievements,
   remove,
   update,
 } from "../../controllers/achievement.controller";
-import { isAuthenticated } from "../../middlewares/auth.middleware";
+import { isAdmin, isAuthenticated } from "../../middlewares/auth.middleware";
 import { uploadFile } from "../../middlewares/upload.middleware";
 
 const router = Router();
@@ -40,5 +41,8 @@ router.put("/:id", isAuthenticated, uploadFile.single("file"), update);
 
 // DELETE achievement by ID
 router.delete("/:id", isAuthenticated, remove);
+
+// APPROVE ACHIEVEMENT BY ADMIN ONLY
+router.post("/:id/approve", isAuthenticated, isAdmin, approve);
 
 export default router;

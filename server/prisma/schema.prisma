@@ -22,10 +22,13 @@ model User {
   stdId      String? // Only for students
   phone      String
   role       Role    @default(STUDENT)
-  isApproved Boolean @default(false) // Only admin can approve
+  isApproved Boolean @default(false)
 
-  achievements Achievement[] // relation with achievements
-  publications ResearchPublication[] // relation with research publications
+  // Relations
+  achievements         Achievement[]         @relation("CreatedAchievements")
+  publications         ResearchPublication[] @relation("CreatedPublications")
+  approvedAchievements Achievement[]         @relation("AchievementApprovals")
+  approvedPublications ResearchPublication[] @relation("PublicationApprovals")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -36,12 +39,18 @@ model Achievement {
   title       String
   description String
   category    String?
-  date        DateTime // optional achievement date
-  fileUrl     String // S3 file URL
+  date        DateTime
+  fileUrl     String
   visibility  Visibility @default(PUBLIC)
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Creator
+  user   User   @relation("CreatedAchievements", fields: [userId], references: [id])
   userId String @db.Uuid
+
+  // Approval
+  isApproved   Boolean @default(false)
+  approvedBy   User?   @relation("AchievementApprovals", fields: [approvedById], references: [id])
+  approvedById String? @db.Uuid
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -50,17 +59,23 @@ model Achievement {
 model ResearchPublication {
   id                String     @id @default(uuid()) @db.Uuid
   title             String
-  abstract          String // summary of publication
-  authors           Json? // list of authors (can be stored as CSV or JSON)
-  publicationYear   Int // optional year
-  journalConference String // Journal/Conference name
-  doi               String // DOI identifier
-  fileUrl           String // S3 file URL
-  publishedAt       DateTime // optional published date
+  abstract          String
+  authors           Json?
+  publicationYear   Int
+  journalConference String
+  doi               String
+  fileUrl           String
+  publishedAt       DateTime
   visibility        Visibility @default(PUBLIC)
 
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Creator
+  user   User   @relation("CreatedPublications", fields: [userId], references: [id])
   userId String @db.Uuid
+
+  // Approval
+  isApproved   Boolean @default(false)
+  approvedBy   User?   @relation("PublicationApprovals", fields: [approvedById], references: [id])
+  approvedById String? @db.Uuid
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

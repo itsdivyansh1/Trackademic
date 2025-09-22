@@ -3,15 +3,18 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { User as PrismaUser } from "@prisma/client";
 import { Request, Response } from "express";
 import z from "zod";
+import { S3_BUCKET_NAME } from "../config/index.conf";
 import s3 from "../config/s3.config";
 import {
+  approveAchievement,
   createAchievement,
   deleteAchievement,
   getAllUserAchievements,
   getPublicAchievements,
   updateAchievement,
 } from "../services/achievement.service";
-import { AchievementSchema, S3File } from "../types/achievement.types";
+import { AchievementSchema } from "../types/achievement.types";
+import { S3File } from "../types/s3.types";
 
 async function addSignedUrls(achievements: any[]) {
   return Promise.all(
@@ -19,7 +22,7 @@ async function addSignedUrls(achievements: any[]) {
       if (!ach.fileUrl) return ach;
 
       const command = new GetObjectCommand({
-        Bucket: process.env.S3_BUCKET_NAME!,
+        Bucket: S3_BUCKET_NAME,
         Key: ach.fileUrl,
       });
 
@@ -123,6 +126,30 @@ export const remove = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Achievement not found" });
 
     res.json({ message: "Deleted successfully" });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+// ACHIEVEMENT APPROVAL BY ADMIN
+export const approve = async (req: Request, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+
+    const user = req.user as PrismaUser;
+    if (user.role !== "ADMIN") {
+      return res
+        .status(403)
+        .json({ error: "Forbidden: Only admins can approve achievements" });
+    }
+
+    const id = req.params.id;
+    if (!id)
+      return res.status(400).json({ error: "Achievement ID is required" });
+
+    const achievement = await approveAchievement(id, user.id);
+
+    res.json({ message: "Achievement approved successfully", achievement });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }

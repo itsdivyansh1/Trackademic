@@ -71,3 +71,18 @@ export const getAllUserAchievements = async (userId: string) => {
     orderBy: { createdAt: "desc" },
   });
 };
+
+// Admin can approve achievements that is uploaded
+export const approveAchievement = async (id: string, adminId: string) => {
+  return prisma.achievement.update({
+    where: { id },
+    data: {
+      isApproved: true,
+      approvedById: adminId,
+    },
+    include: {
+      user: { select: { id: true, name: true } },
+      approvedBy: { select: { id: true, name: true } },
+    },
+  });
+};

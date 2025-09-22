@@ -1,13 +1,11 @@
 ### Todo
 
-- [ ] Work on the website ~3d #feat @john 2020-03-20
-- [ ] Fix the homepage ~1d #bug @jane
-  - [ ] Sub-task or description
+- [ ] Add aprroved status for achievement
+- [ ] Also show approved by 'user'
+- [ ] Create routes, controllers and services for research publications | same as achievements
+- [ ] Faculty can create events
+- [ ] Compress and use cdn before saving files to _s3_ bucket
 
 ### In Progress
 
-- [ ] Work on Github Repo [JIRA-345]
-
 ### Done ✓
-
-- [x] Create my first TODO.md
