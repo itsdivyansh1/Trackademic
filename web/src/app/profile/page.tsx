@@ -41,6 +41,7 @@ export default function Profile() {
 
   return (
     <div>
+      {JSON.stringify(data.user)}
       <h1>Welcome, {data.user.name}</h1>
       <p>Email: {data.user.email}</p>
       <p>Role: {data.user.role}</p>
