@@ -19,13 +19,29 @@ export const updatePublication = async (
   input: Partial<ResearchPublicationInput & { fileUrl?: string }>,
   userId: string
 ) => {
-  const data = Object.fromEntries(
-    Object.entries(input).filter(([_, v]) => v !== undefined)
-  );
+  // Filter out undefined values to prevent overwriting existing data with undefined
+  const data: any = {};
 
-  if (input.publishedAt) {
-    data.publishedAt = new Date(input.publishedAt);
+  Object.entries(input).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      data[key] = value;
+    }
+  });
+
+  // Handle publishedAt safely
+  if (data.publishedAt) {
+    data.publishedAt =
+      typeof data.publishedAt === "string"
+        ? new Date(data.publishedAt)
+        : data.publishedAt;
   }
+
+  // Convert publicationYear to number if it's a string
+  if (data.publicationYear && typeof data.publicationYear === "string") {
+    data.publicationYear = parseInt(data.publicationYear);
+  }
+
+  console.log("Service update data:", data); // Debug log
 
   return prisma.researchPublication.updateMany({
     where: { id, userId },
@@ -41,7 +57,7 @@ export const deletePublication = async (id: string, userId: string) => {
 
 export const getUserPublications = async (userId: string) => {
   return prisma.researchPublication.findMany({
-    where: { userId, isApproved: true }, // only approved visible
+    where: { userId, isApproved: true },
     orderBy: { createdAt: "desc" },
   });
 };
@@ -57,6 +73,18 @@ export const getPublicPublications = async () => {
   return prisma.researchPublication.findMany({
     where: { visibility: "PUBLIC", isApproved: true },
     orderBy: { createdAt: "desc" },
+  });
+};
+
+export const getAllPublicPublications = async () => {
+  return prisma.researchPublication.findMany({
+    where: { visibility: "PUBLIC" },
+    orderBy: { createdAt: "desc" },
+    include: {
+      user: {
+        select: { id: true, name: true, isApproved: true },
+      },
+    },
   });
 };
 

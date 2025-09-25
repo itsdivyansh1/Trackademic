@@ -8,7 +8,7 @@ import {
   update,
 } from "../../controllers/achievement.controller";
 import { isAdmin, isAuthenticated } from "../../middlewares/auth.middleware";
-import { uploadFile } from "../../middlewares/upload.middleware";
+import { uploadAchievement } from "../../middlewares/upload.middleware";
 
 const router = Router();
 
@@ -28,7 +28,7 @@ const router = Router();
 // router.post("/create", isAuthenticated, uploadFile.single("file"), create);
 
 // CREATE achievement with file upload
-router.post("/", isAuthenticated, uploadFile.single("file"), create);
+router.post("/", isAuthenticated, uploadAchievement.single("file"), create);
 
 // LIST public achievements for current user
 router.get("/public", isAuthenticated, listPublicAchievements);
@@ -37,12 +37,12 @@ router.get("/public", isAuthenticated, listPublicAchievements);
 router.get("/my", isAuthenticated, listAllAchievements);
 
 // UPDATE achievement by ID
-router.put("/:id", isAuthenticated, uploadFile.single("file"), update);
+router.put("/:id", isAuthenticated, uploadAchievement.single("file"), update);
 
 // DELETE achievement by ID
 router.delete("/:id", isAuthenticated, remove);
 
 // APPROVE ACHIEVEMENT BY ADMIN ONLY
-router.post("/:id/approve", isAuthenticated, isAdmin, approve);
+router.put("/approve/:id", isAuthenticated, isAdmin, approve);
 
 export default router;

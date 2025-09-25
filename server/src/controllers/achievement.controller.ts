@@ -1,8 +1,9 @@
-import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { User as PrismaUser } from "@prisma/client";
 import { Request, Response } from "express";
 import z from "zod";
+import { prisma } from "../config/db.conf"; // make sure you import prisma client
 import { S3_BUCKET_NAME } from "../config/index.conf";
 import s3 from "../config/s3.config";
 import {
@@ -16,6 +17,7 @@ import {
 import { AchievementSchema } from "../types/achievement.types";
 import { S3File } from "../types/s3.types";
 
+// Add signed URL helper
 async function addSignedUrls(achievements: any[]) {
   return Promise.all(
     achievements.map(async (ach) => {
@@ -32,6 +34,7 @@ async function addSignedUrls(achievements: any[]) {
   );
 }
 
+// CREATE
 export const create = async (req: Request, res: Response) => {
   try {
     if (!req.user) return res.status(401).json({ error: "Unauthorized" });
@@ -92,9 +95,32 @@ export const update = async (req: Request, res: Response) => {
     const input = req.body as Partial<
       z.infer<typeof AchievementSchema> & { fileUrl?: string }
     >;
+
     const id = req.params.id;
     if (!id)
       return res.status(400).json({ error: "Achievement ID is required" });
+
+    // find current achievement (to know old file key)
+    const existing = await prisma.achievement.findFirst({
+      where: { id, userId: (req.user as PrismaUser).id },
+    });
+    if (!existing)
+      return res.status(404).json({ error: "Achievement not found" });
+
+    // If a new file uploaded → replace and delete old file from S3
+    const file = req.file as S3File | undefined;
+    if (file?.key) {
+      input.fileUrl = file.key;
+
+      if (existing.fileUrl) {
+        await s3.send(
+          new DeleteObjectCommand({
+            Bucket: S3_BUCKET_NAME,
+            Key: existing.fileUrl,
+          })
+        );
+      }
+    }
 
     const result = await updateAchievement(
       id,
@@ -120,10 +146,28 @@ export const remove = async (req: Request, res: Response) => {
     if (!id)
       return res.status(400).json({ error: "Achievement ID is required" });
 
+    // fetch the achievement to get file key
+    const existing = await prisma.achievement.findFirst({
+      where: { id, userId: (req.user as PrismaUser).id },
+    });
+    if (!existing)
+      return res.status(404).json({ error: "Achievement not found" });
+
+    // delete record from DB
     const result = await deleteAchievement(id, (req.user as PrismaUser).id);
 
     if (result.count === 0)
       return res.status(404).json({ error: "Achievement not found" });
+
+    // delete file from S3 if exists
+    if (existing.fileUrl) {
+      await s3.send(
+        new DeleteObjectCommand({
+          Bucket: S3_BUCKET_NAME,
+          Key: existing.fileUrl,
+        })
+      );
+    }
 
     res.json({ message: "Deleted successfully" });
   } catch (err: any) {

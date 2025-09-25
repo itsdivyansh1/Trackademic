@@ -10,16 +10,17 @@ import {
   update,
 } from "../../controllers/publication.controller";
 import { isAdmin, isAuthenticated } from "../../middlewares/auth.middleware";
-import { uploadFile } from "../../middlewares/upload.middleware";
+import { uploadPublication } from "../../middlewares/upload.middleware";
 
 const router = Router();
 
 // User routes
-router.post("/", isAuthenticated, uploadFile.single("file"), create);
+router.post("/", isAuthenticated, uploadPublication.single("file"), create);
+router.put("/:id", isAuthenticated, uploadPublication.single("file"), update);
 router.get("/my", isAuthenticated, listAllUserPublications);
 router.get("/user", isAuthenticated, listUserPublications);
 router.get("/public", listPublicPublications);
-router.put("/:id", isAuthenticated, update);
+
 router.delete("/:id", isAuthenticated, remove);
 
 // Admin routes

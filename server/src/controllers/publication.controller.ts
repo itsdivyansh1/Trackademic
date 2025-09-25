@@ -1,5 +1,8 @@
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { User as PrismaUser } from "@prisma/client";
 import { Request, Response } from "express";
+
 import {
   approvePublication,
   createPublication,
@@ -10,8 +13,28 @@ import {
   getUserPublications,
   updatePublication,
 } from "../services/publication.service";
+
+import { S3_BUCKET_NAME } from "../config/index.conf";
+import s3 from "../config/s3.config";
 import { ResearchPublicationSchema } from "../types/publication.types";
 import { S3File } from "../types/s3.types";
+
+// Helper: generate signed URLs for publications
+async function addSignedUrls(publications: any[]) {
+  return Promise.all(
+    publications.map(async (pub) => {
+      if (!pub.fileUrl) return pub;
+
+      const command = new GetObjectCommand({
+        Bucket: S3_BUCKET_NAME,
+        Key: pub.fileUrl,
+      });
+
+      const signedUrl = await getSignedUrl(s3, command, { expiresIn: 60 * 5 });
+      return { ...pub, fileUrl: signedUrl };
+    })
+  );
+}
 
 // CREATE
 export const create = async (req: Request, res: Response) => {
@@ -28,7 +51,8 @@ export const create = async (req: Request, res: Response) => {
       (req.user as PrismaUser).id
     );
 
-    res.status(201).json({ publication });
+    const publicationWithUrl = (await addSignedUrls([publication]))[0];
+    res.status(201).json({ publication: publicationWithUrl });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
@@ -40,13 +64,15 @@ export const listUserPublications = async (req: Request, res: Response) => {
     if (!req.user) return res.status(401).json({ error: "Unauthorized" });
 
     const publications = await getUserPublications((req.user as PrismaUser).id);
-    res.json({ publications });
+    const publicationsWithUrls = await addSignedUrls(publications);
+
+    res.json({ publications: publicationsWithUrls });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
 };
 
-// LIST all user’s publications (admin or owner)
+// LIST all user’s publications
 export const listAllUserPublications = async (req: Request, res: Response) => {
   try {
     if (!req.user) return res.status(401).json({ error: "Unauthorized" });
@@ -54,7 +80,9 @@ export const listAllUserPublications = async (req: Request, res: Response) => {
     const publications = await getAllUserPublications(
       (req.user as PrismaUser).id
     );
-    res.json({ publications });
+    const publicationsWithUrls = await addSignedUrls(publications);
+
+    res.json({ publications: publicationsWithUrls });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
@@ -64,7 +92,9 @@ export const listAllUserPublications = async (req: Request, res: Response) => {
 export const listPublicPublications = async (_req: Request, res: Response) => {
   try {
     const publications = await getPublicPublications();
-    res.json({ publications });
+    const publicationsWithUrls = await addSignedUrls(publications);
+
+    res.json({ publications: publicationsWithUrls });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
@@ -78,9 +108,37 @@ export const update = async (req: Request, res: Response) => {
     const id = req.params.id;
     if (!id) return res.status(400).json({ error: "Publication ID required" });
 
+    // Handle multipart form data
+    const updateData: any = {};
+
+    // Parse form fields - handle both multipart and regular form data
+    const body = req.body || {};
+
+    if (body.title) updateData.title = body.title;
+    if (body.abstract) updateData.abstract = body.abstract;
+    if (body.authors) updateData.authors = body.authors;
+    if (body.journalConference)
+      updateData.journalConference = body.journalConference;
+    if (body.category) updateData.category = body.category;
+    if (body.publicationYear)
+      updateData.publicationYear = parseInt(body.publicationYear);
+    if (body.doi) updateData.doi = body.doi;
+    if (body.publishedAt) updateData.publishedAt = body.publishedAt;
+    if (body.visibility) updateData.visibility = body.visibility;
+
+    // Handle file upload ONLY if a new file is provided
+    const file = req.file as S3File | undefined;
+    if (file?.key) {
+      updateData.fileUrl = file.key;
+    }
+    // If no file is provided, don't update the fileUrl field
+    // This preserves the existing file
+
+    console.log("Update data:", updateData); // Debug log
+
     const result = await updatePublication(
       id,
-      req.body,
+      updateData,
       (req.user as PrismaUser).id
     );
 
@@ -88,6 +146,7 @@ export const update = async (req: Request, res: Response) => {
 
     res.json({ message: "Updated successfully" });
   } catch (err: any) {
+    console.error("Update publication error:", err);
     res.status(400).json({ error: err.message });
   }
 };
@@ -101,7 +160,6 @@ export const remove = async (req: Request, res: Response) => {
     if (!id) return res.status(400).json({ error: "Publication ID required" });
 
     const result = await deletePublication(id, (req.user as PrismaUser).id);
-
     if (result.count === 0) return res.status(404).json({ error: "Not found" });
 
     res.json({ message: "Deleted successfully" });
@@ -114,23 +172,25 @@ export const remove = async (req: Request, res: Response) => {
 export const approve = async (req: Request, res: Response) => {
   try {
     if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+
     const user = req.user as PrismaUser;
     if (user.role !== "ADMIN") {
       return res
         .status(403)
-        .json({ error: "Forbidden: Only admins can approve achievements" });
+        .json({ error: "Forbidden: Only admins can approve publications" });
     }
 
     const id = req.params.id;
     if (!id)
-      return res.status(400).json({ error: "Achievement ID is required" });
+      return res.status(400).json({ error: "Publication ID is required" });
 
-    const publication = await approvePublication(
-      id,
-      (req.user as PrismaUser).id
-    );
+    const publication = await approvePublication(id, user.id);
+    const publicationWithUrl = (await addSignedUrls([publication]))[0];
 
-    res.json({ message: "Publication approved", publication });
+    res.json({
+      message: "Publication approved",
+      publication: publicationWithUrl,
+    });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
@@ -140,7 +200,9 @@ export const approve = async (req: Request, res: Response) => {
 export const listAllAdmin = async (_req: Request, res: Response) => {
   try {
     const publications = await getAllPublicationsAdmin();
-    res.json({ publications });
+    const publicationsWithUrls = await addSignedUrls(publications);
+
+    res.json({ publications: publicationsWithUrls });
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }

@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import z from "zod";
 import { prisma } from "../config/db.conf";
 import { AchievementSchema } from "../types/achievement.types";
@@ -28,13 +29,15 @@ export const updateAchievement = async (
   input: Partial<z.infer<typeof AchievementSchema> & { fileUrl?: string }>,
   userId: string
 ) => {
-  const data = Object.fromEntries(
-    Object.entries(input).filter(([_, v]) => v !== undefined)
-  );
+  // Build a safe data object
+  const data: Prisma.AchievementUpdateManyMutationInput = {};
 
-  if (input.date) {
-    data.date = new Date(input.date); // Convert string to Date
-  }
+  if (input.title !== undefined) data.title = input.title;
+  if (input.description !== undefined) data.description = input.description;
+  if (input.category !== undefined) data.category = input.category ?? null;
+  if (input.date !== undefined) data.date = new Date(input.date);
+  if (input.visibility !== undefined) data.visibility = input.visibility;
+  if (input.fileUrl !== undefined) data.fileUrl = input.fileUrl;
 
   return prisma.achievement.updateMany({
     where: { id, userId },
@@ -61,6 +64,18 @@ export const getPublicAchievements = async (userId: string) => {
       visibility: "PUBLIC", // only public achievements
     },
     orderBy: { createdAt: "desc" },
+  });
+};
+
+export const getAllPublicAchievements = async () => {
+  return prisma.achievement.findMany({
+    where: { visibility: "PUBLIC" },
+    orderBy: { createdAt: "desc" },
+    include: {
+      user: {
+        select: { id: true, name: true, isApproved: true },
+      },
+    },
   });
 };
 
