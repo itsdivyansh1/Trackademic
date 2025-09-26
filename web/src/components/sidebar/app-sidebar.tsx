@@ -1,6 +1,6 @@
 "use client";
 
-import { Command, Map, PieChart } from "lucide-react";
+import { Command, FolderMinus } from "lucide-react";
 import * as React from "react";
 
 import { Award } from "@/assets/outline/Award";
@@ -8,7 +8,7 @@ import { BookOpen } from "@/assets/outline/BookeOpen";
 import Cogwheel from "@/assets/outline/Cogwheel";
 import { House2 } from "@/assets/outline/House2";
 import { NavMain } from "@/components/sidebar/nav-main";
-import { NavProjects } from "@/components/sidebar/nav-projects";
+import { NavSecondary } from "@/components/sidebar/nav-sec";
 import { NavUser } from "@/components/sidebar/nav-user";
 import {
   Sidebar,
@@ -20,19 +20,16 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { getProfile } from "@/lib/auth";
+import { useQuery } from "@tanstack/react-query";
+import { usePathname } from "next/navigation";
 
 const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   navMain: [
     {
       title: "Home",
       url: "/app/home",
       icon: House2,
-      isActive: true,
     },
     {
       title: "Achievements",
@@ -45,26 +42,48 @@ const data = {
       icon: BookOpen,
     },
   ],
-  projects: [
+  navSec: [
     {
       name: "Settings",
       url: "#",
       icon: Cogwheel,
     },
     {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: PieChart,
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: Map,
+      name: "Form Builder",
+      url: "/app/form-builder",
+      icon: FolderMinus,
     },
   ],
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const pathname = usePathname(); // get current route
+
+  const {
+    data: userData,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["profile"],
+    queryFn: getProfile,
+    retry: false,
+  });
+
+  const navMain = data.navMain.map((item) => ({
+    ...item,
+    isActive: pathname.startsWith(item.url),
+  }));
+
+  const navSec = data.navSec
+    .filter(
+      (item) =>
+        item.name !== "Form Builder" || userData?.user?.role === "FACULTY",
+    )
+    .map((item) => ({
+      ...item,
+      isActive: pathname.startsWith(item.url),
+    }));
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
@@ -85,11 +104,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
+        <NavMain items={navMain} />
+        <NavSecondary navSec={navSec} role={userData?.user?.role} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser user={userData?.user} />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

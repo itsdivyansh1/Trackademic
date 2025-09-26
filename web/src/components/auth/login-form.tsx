@@ -55,7 +55,7 @@ export function LoginForm({
     onSuccess: () => {
       setLoading(false);
       toast.success("Logged in successfully");
-      router.push("/profile");
+      router.push("/app");
     },
     onError: (error) => {
       setLoading(false);

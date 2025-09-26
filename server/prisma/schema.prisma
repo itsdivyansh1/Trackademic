@@ -14,15 +14,16 @@ datasource db {
 }
 
 model User {
-  id         String  @id @default(uuid()) @db.Uuid
-  name       String
-  email      String  @unique
-  password   String
-  department String
-  stdId      String? // Only for students
-  phone      String
-  role       Role    @default(STUDENT)
-  isApproved Boolean @default(false)
+  id           String  @id @default(uuid()) @db.Uuid
+  name         String
+  email        String  @unique
+  password     String
+  department   String
+  stdId        String? // Only for students
+  phone        String
+  role         Role    @default(STUDENT)
+  isApproved   Boolean @default(false)
+  profileImage String?
 
   // Relations
   achievements         Achievement[]         @relation("CreatedAchievements")
