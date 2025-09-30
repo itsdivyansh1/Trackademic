@@ -9,6 +9,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <h1 className="mb-6 text-xl font-bold">Admin Dashboard</h1>
         <nav className="space-y-2">
           <Link
+            href="/admin"
+            className="block rounded p-2 hover:bg-gray-700"
+          >
+            Dashboard
+          </Link>
+          <Link
             href="/admin/users"
             className="block rounded p-2 hover:bg-gray-700"
           >

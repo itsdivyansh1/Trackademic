@@ -3,7 +3,9 @@ import { EyeIcon, EyeOffIcon, GalleryVerticalEnd, Loader } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { ImagePlus, UserRound } from "lucide-react";
 
 import {
   Form,
@@ -78,6 +80,9 @@ export function RegisterForm({
 }: React.ComponentProps<"div">) {
   const router = useRouter();
   const [loading, setLoading] = useState<boolean>(false);
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState<boolean>(false);
 
   const id = useId();
   const [isVisible, setIsVisible] = useState<boolean>(false);
@@ -116,7 +121,16 @@ export function RegisterForm({
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
-    mutation.mutate(values);
+    const formData = new FormData();
+    formData.append("name", values.name);
+    formData.append("email", values.email);
+    formData.append("password", values.password);
+    formData.append("phone", values.phone);
+    formData.append("department", values.department);
+    if (values.stdId) formData.append("stdId", values.stdId);
+    formData.append("role", values.role);
+    if (profileImage) formData.append("profileImage", profileImage);
+    mutation.mutate(formData);
   }
 
   return (
@@ -143,6 +157,61 @@ export function RegisterForm({
               </div>
             </div>
             <div className="flex flex-col gap-6">
+              {/* Profile image uploader */}
+              <div className="grid place-items-center">
+                <div className="flex w-full max-w-sm flex-col items-center gap-3">
+                  <Avatar className="size-20 border-2 border-blue-200 bg-blue-50">
+                    {previewUrl ? (
+                      <AvatarImage src={previewUrl} alt="Profile image" />
+                    ) : (
+                      <AvatarFallback className="text-[10px] text-blue-700">
+                        <UserRound className="mr-1 size-3" /> Profile image
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+
+                  <div
+                    className={cn(
+                      "w-full cursor-pointer rounded-lg border-2 border-dashed p-4 text-center transition",
+                      dragActive ? "border-blue-500 bg-blue-50" : "border-muted-foreground/30 hover:border-muted-foreground/60",
+                    )}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setDragActive(true);
+                    }}
+                    onDragLeave={() => setDragActive(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDragActive(false);
+                      const file = e.dataTransfer.files?.[0];
+                      if (file && file.type.startsWith("image/")) {
+                        setProfileImage(file);
+                        setPreviewUrl(URL.createObjectURL(file));
+                      }
+                    }}
+                    onClick={() => document.getElementById("profileImageInput")?.click()}
+                  >
+                    <div className="flex flex-col items-center gap-2">
+                      <ImagePlus className="size-5 text-blue-600" />
+                      <div className="text-xs font-medium">Profile image</div>
+                      <div className="text-muted-foreground text-xs">
+                        Drag & drop or click to upload
+                      </div>
+                    </div>
+                    <input
+                      id="profileImageInput"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] ?? null;
+                        setProfileImage(file);
+                        setPreviewUrl(file ? URL.createObjectURL(file) : null);
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
               <div className="grid gap-3">
                 <FormField
                   control={form.control}

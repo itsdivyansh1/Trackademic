@@ -17,6 +17,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Controller, SubmitHandler, useForm } from "react-hook-form";
 import { z } from "zod";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   data: z.record(z.string(), z.any()),
@@ -31,9 +32,11 @@ export default function FormPage() {
     title: string;
     description?: string;
     fields: FormField[];
+    hasSubmitted?: boolean;
   }>(null);
   const { control, handleSubmit } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    defaultValues: { data: {} },
   });
 
   useEffect(() => {
@@ -46,9 +49,13 @@ export default function FormPage() {
   if (!form) return <p>Loading form...</p>;
 
   const onSubmit: SubmitHandler<FormValues> = (values) => {
+    if (form?.hasSubmitted) return;
     submitForm(slug!, values.data)
-      .then(() => alert("Form submitted!"))
-      .catch(console.error);
+      .then(() => {
+        toast.success("Form submitted!");
+        setForm((prev) => (prev ? { ...prev, hasSubmitted: true } : prev));
+      })
+      .catch((e) => toast.error(e?.response?.data?.error ?? "Submission failed"));
   };
 
   return (
@@ -67,8 +74,9 @@ export default function FormPage() {
             <Controller
               control={control}
               name={`data.${field.id}`}
-              defaultValue=""
+              defaultValue={field.type === "CHECKBOX" ? [] : ""}
               render={({ field: f }) => {
+                const disabled = !!form?.hasSubmitted;
                 switch (field.type) {
                   case "TEXT":
                   case "EMAIL":
@@ -78,17 +86,18 @@ export default function FormPage() {
                         {...f}
                         type={field.type.toLowerCase()}
                         required={field.required}
+                        disabled={disabled}
                       />
                     );
                   case "TEXTAREA":
-                    return <Textarea {...f} required={field.required} />;
+                    return <Textarea {...f} required={field.required} disabled={disabled} />;
                   case "DATE":
                     return (
-                      <Input {...f} type="date" required={field.required} />
+                      <Input {...f} type="date" required={field.required} disabled={disabled} />
                     );
                   case "SELECT":
                     return (
-                      <Select {...f}>
+                      <Select value={f.value} onValueChange={f.onChange} disabled={disabled}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select..." />
                         </SelectTrigger>
@@ -101,28 +110,49 @@ export default function FormPage() {
                         </SelectContent>
                       </Select>
                     );
-                  case "CHECKBOX":
+                  case "CHECKBOX": {
+                    const current: string[] = Array.isArray(f.value) ? f.value : [];
                     return (
-                      <>
-                        {field.options?.map((o) => (
-                          <div key={o}>
-                            <Checkbox {...f} value={o} />
-                            <label>{o}</label>
-                          </div>
-                        ))}
-                      </>
+                      <div className="space-y-2">
+                        {field.options?.map((o) => {
+                          const checked = current.includes(o);
+                          return (
+                            <label key={o} className="flex items-center gap-2">
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(c) => {
+                                  if (disabled) return;
+                                  if (c) f.onChange([...current, o]);
+                                  else f.onChange(current.filter((v) => v !== o));
+                                }}
+                                disabled={disabled}
+                              />
+                              <span>{o}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
                     );
-                  case "RADIO":
+                  }
+                  case "RADIO": {
                     return (
-                      <>
+                      <div className="space-y-2">
                         {field.options?.map((o) => (
-                          <div key={o}>
-                            <input type="radio" {...f} value={o} id={o} />
-                            <label htmlFor={o}>{o}</label>
-                          </div>
+                          <label key={o} className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name={f.name}
+                              value={o}
+                              checked={f.value === o}
+                              onChange={() => f.onChange(o)}
+                              disabled={disabled}
+                            />
+                            <span>{o}</span>
+                          </label>
                         ))}
-                      </>
+                      </div>
                     );
+                  }
                   default:
                     return <></>; // empty fragment instead of null
                 }
@@ -131,7 +161,11 @@ export default function FormPage() {
           </div>
         ))}
 
-        <Button type="submit">Submit</Button>
+        {form.hasSubmitted ? (
+          <div className="text-sm text-muted-foreground">You have already submitted this form.</div>
+        ) : (
+          <Button type="submit">Submit</Button>
+        )}
       </form>
 
       <div className="mt-6">

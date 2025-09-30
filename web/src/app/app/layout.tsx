@@ -1,4 +1,5 @@
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
+import { AuthGate } from "@/components/auth/auth-gate";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -30,29 +31,40 @@ export default function AppLayout({
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+        {/* Clean header with breadcrumb */}
+        <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
-            <Separator
-              orientation="vertical"
-              className="mr-2 data-[orientation=vertical]:h-4"
-            />
+            <Separator orientation="vertical" className="mr-2 h-4" />
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink asChild>
-                    <Link href={"#"}>Building Your Application</Link>
+                  <BreadcrumbLink href="/app">
+                    Trackademic
                   </BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Data Fetching</BreadcrumbPage>
+                  <BreadcrumbPage>Dashboard</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
           </div>
         </header>
-        <div className="p-4 pt-0">{children}</div>
+        <div className="p-4">
+          <AuthGate>{children}</AuthGate>
+        </div>
+        <footer className="border-t bg-background p-4 text-xs text-muted-foreground">
+          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 md:flex-row">
+            <div>© {new Date().getFullYear()} Trackademic</div>
+            <div className="flex items-center gap-4">
+              <Link href="#">Help</Link>
+              <Link href="#">Privacy</Link>
+              <Link href="#">Terms</Link>
+              <Link href="#">Contact</Link>
+            </div>
+          </div>
+        </footer>
       </SidebarInset>
     </SidebarProvider>
   );

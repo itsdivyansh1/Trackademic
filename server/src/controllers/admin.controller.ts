@@ -396,3 +396,37 @@ export const rejectPublication = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to reject publication' });
   }
 };
+
+// Delete achievement
+export const deleteAchievementAdmin = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: "Achievement ID is required" });
+
+    const existing = await prisma.achievement.findUnique({ where: { id }, select: { id: true, title: true } });
+    if (!existing) return res.status(404).json({ error: "Achievement not found" });
+
+    await prisma.achievement.delete({ where: { id } });
+    res.json({ message: `Achievement ${existing.title} deleted successfully` });
+  } catch (error) {
+    console.error('Error deleting achievement:', error);
+    res.status(500).json({ error: 'Failed to delete achievement' });
+  }
+};
+
+// Delete publication
+export const deletePublicationAdmin = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!id) return res.status(400).json({ error: "Publication ID is required" });
+
+    const existing = await prisma.researchPublication.findUnique({ where: { id }, select: { id: true, title: true } });
+    if (!existing) return res.status(404).json({ error: "Publication not found" });
+
+    await prisma.researchPublication.delete({ where: { id } });
+    res.json({ message: `Publication ${existing.title} deleted successfully` });
+  } catch (error) {
+    console.error('Error deleting publication:', error);
+    res.status(500).json({ error: 'Failed to delete publication' });
+  }
+};

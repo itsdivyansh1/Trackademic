@@ -52,10 +52,15 @@ export function LoginForm({
 
   const mutation = useMutation({
     mutationFn: loginUser,
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       setLoading(false);
       toast.success("Logged in successfully");
-      router.push("/app");
+      const role = data?.user?.role;
+      if (role === "ADMIN") {
+        router.push("/admin");
+      } else {
+        router.push("/app");
+      }
     },
     onError: (error) => {
       setLoading(false);

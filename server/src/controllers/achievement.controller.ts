@@ -55,14 +55,13 @@ export const create = async (req: Request, res: Response) => {
   }
 };
 
-// List only public achievements
-export const listPublicAchievements = async (req: Request, res: Response) => {
+// List public achievements (approved, visibility PUBLIC) for explore feed
+export const listPublicAchievements = async (_req: Request, res: Response) => {
   try {
-    if (!req.user) return res.status(401).json({ error: "Unauthorized" });
-
-    const achievements = await getPublicAchievements(
-      (req.user as PrismaUser).id
-    );
+    const achievements = await prisma.achievement.findMany({
+      where: { visibility: "PUBLIC", isApproved: true },
+      orderBy: { createdAt: "desc" },
+    });
     const achievementsWithUrl = await addSignedUrls(achievements);
 
     res.json({ achievements: achievementsWithUrl });

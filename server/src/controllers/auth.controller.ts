@@ -7,7 +7,10 @@ import { RegisterSchema } from "../types/auth.types";
 export const register = async (req: Request, res: Response) => {
   try {
     const data = RegisterSchema.parse(req.body);
-    const user = await registerUser(data); // Registering user here
+    const file = req.file as { key?: string } | undefined;
+    const profileImageKey = file?.key;
+
+    const user = await registerUser(data, profileImageKey); // Registering user here
 
     return res.status(201).json({ message: "User registered", user });
   } catch (err: any) {

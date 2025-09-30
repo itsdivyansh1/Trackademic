@@ -30,6 +30,9 @@ model User {
   publications         ResearchPublication[] @relation("CreatedPublications")
   approvedAchievements Achievement[]         @relation("AchievementApprovals")
   approvedPublications ResearchPublication[] @relation("PublicationApprovals")
+  // Form builder relations
+  createdForms         Form[]
+  formSubmissions      FormSubmission[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -91,4 +94,72 @@ enum Role {
 enum Visibility {
   PUBLIC
   PRIVATE
+}
+
+// ---- Form Builder ----
+model Form {
+  id          String        @id @default(uuid()) @db.Uuid
+  title       String
+  description String?
+  slug        String        @unique
+  category    FormCategory  @default(GENERIC)
+  isOpen      Boolean       @default(true)
+
+  createdBy   User          @relation(fields: [createdById], references: [id])
+  createdById String        @db.Uuid
+
+  fields      FormField[]
+  submissions FormSubmission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FormField {
+  id       String    @id @default(uuid()) @db.Uuid
+  form     Form      @relation(fields: [formId], references: [id])
+  formId   String    @db.Uuid
+  label    String
+  type     FieldType
+  required Boolean   @default(false)
+  options  Json?
+  answers  SubmissionAnswer[]
+}
+
+model FormSubmission {
+  id        String    @id @default(uuid()) @db.Uuid
+  form      Form      @relation(fields: [formId], references: [id])
+  formId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String    @db.Uuid
+  answers   SubmissionAnswer[]
+  createdAt DateTime  @default(now())
+
+  @@unique([formId, userId])
+}
+
+model SubmissionAnswer {
+  id           String          @id @default(uuid()) @db.Uuid
+  submission   FormSubmission  @relation(fields: [submissionId], references: [id])
+  submissionId String          @db.Uuid
+  field        FormField       @relation(fields: [fieldId], references: [id])
+  fieldId      String          @db.Uuid
+  value        Json
+}
+
+enum FieldType {
+  TEXT
+  NUMBER
+  TEXTAREA
+  EMAIL
+  SELECT
+  RADIO
+  CHECKBOX
+  DATE
+}
+
+enum FormCategory {
+  ACHIEVEMENT
+  CERTIFICATION
+  GENERIC
 }

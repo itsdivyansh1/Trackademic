@@ -47,7 +47,7 @@ interface Publication {
   id: string;
   title: string;
   abstract: string;
-  authors: string;
+  authors: string | string[];
   journalConference: string;
   publicationYear: number;
   doi: string;
@@ -110,7 +110,7 @@ export default function EditPublicationPage({
         editForm.reset({
           title: found.title,
           abstract: found.abstract,
-          authors: found.authors,
+          authors: Array.isArray(found.authors) ? found.authors.join(", ") : (found.authors || ""),
           journalConference: found.journalConference,
           publicationYear: found.publicationYear,
           doi: found.doi,

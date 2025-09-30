@@ -7,8 +7,8 @@ const AppPage = () => {
     <div className="grid h-full w-full place-content-center space-y-6">
       <h1>Welcome to Trackademic</h1>
       <Button asChild>
-        <Link href={"/app/home"}>
-          Go to Home Page <ArrowRight />
+        <Link href={"/app/dashboard"}>
+          Go to Dashboard <ArrowRight />
         </Link>
       </Button>
     </div>

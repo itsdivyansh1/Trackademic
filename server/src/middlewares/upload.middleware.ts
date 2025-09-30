@@ -21,3 +21,4 @@ const createUploader = (folder: string) =>
 
 export const uploadAchievement = createUploader("achievements");
 export const uploadPublication = createUploader("publications");
+export const uploadProfile = createUploader("profiles");

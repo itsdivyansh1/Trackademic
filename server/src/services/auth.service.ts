@@ -3,7 +3,10 @@ import z from "zod";
 import { prisma } from "../config/db.conf";
 import { RegisterSchema } from "../types/auth.types";
 
-export const registerUser = async (input: z.infer<typeof RegisterSchema>) => {
+export const registerUser = async (
+  input: z.infer<typeof RegisterSchema>,
+  profileImageKey?: string
+) => {
   const { email, password, role, stdId, ...rest } = input;
 
   const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -26,6 +29,7 @@ export const registerUser = async (input: z.infer<typeof RegisterSchema>) => {
       stdId: role === "STUDENT" ? stdId! : null,
       ...rest,
       isApproved: true,
+      profileImage: profileImageKey ?? null,
     },
   });
 

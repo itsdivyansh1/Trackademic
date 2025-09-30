@@ -55,30 +55,68 @@ export const deletePublication = async (id: string, userId: string) => {
   });
 };
 
+function normalizeAuthors<T extends { authors?: any }>(pub: T): T & { authors: string[] } {
+  let a = pub.authors;
+  let arr: string[] = [];
+  if (Array.isArray(a)) {
+    arr = a.map((s) => String(s));
+  } else if (typeof a === "string") {
+    try {
+      const parsed = JSON.parse(a);
+      if (Array.isArray(parsed)) {
+        arr = parsed.map((s: any) => String(s));
+      } else if (parsed && typeof parsed === "object") {
+        arr = Object.values(parsed as any).map((s: any) => String(s));
+      } else {
+        arr = String(a)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+    } catch {
+      arr = String(a)
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+  } else if (a && typeof a === "object") {
+    arr = Object.values(a as any).map((s: any) => String(s));
+  }
+  return { ...(pub as any), authors: arr };
+}
+
 export const getUserPublications = async (userId: string) => {
-  return prisma.researchPublication.findMany({
+  const pubs = await prisma.researchPublication.findMany({
     where: { userId, isApproved: true },
     orderBy: { createdAt: "desc" },
   });
+  return pubs.map((p) => normalizeAuthors(p));
 };
 
 export const getAllUserPublications = async (userId: string) => {
-  return prisma.researchPublication.findMany({
+  const pubs = await prisma.researchPublication.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
   });
+  return pubs.map((p) => normalizeAuthors(p));
 };
 
 export const getPublicPublications = async () => {
-  return prisma.researchPublication.findMany({
+  const pubs = await prisma.researchPublication.findMany({
     where: { visibility: "PUBLIC", isApproved: true },
     orderBy: { createdAt: "desc" },
+    include: {
+      user: {
+        select: { id: true, name: true, email: true, isApproved: true, profileImage: true },
+      },
+    },
   });
+  return pubs.map((p) => normalizeAuthors(p));
 };
 
 export const getAllPublicPublications = async () => {
-  return prisma.researchPublication.findMany({
-    where: { visibility: "PUBLIC" },
+  const pubs = await prisma.researchPublication.findMany({
+    where: { visibility: "PUBLIC", isApproved: true },
     orderBy: { createdAt: "desc" },
     include: {
       user: {
@@ -86,6 +124,7 @@ export const getAllPublicPublications = async () => {
       },
     },
   });
+  return pubs.map((p) => normalizeAuthors(p));
 };
 
 // ADMIN
@@ -100,8 +139,9 @@ export const approvePublication = async (id: string, adminId: string) => {
 };
 
 export const getAllPublicationsAdmin = async () => {
-  return prisma.researchPublication.findMany({
+  const pubs = await prisma.researchPublication.findMany({
     orderBy: { createdAt: "desc" },
     include: { user: true, approvedBy: true },
   });
+  return pubs.map((p) => normalizeAuthors(p));
 };

@@ -69,7 +69,7 @@ export const getPublicAchievements = async (userId: string) => {
 
 export const getAllPublicAchievements = async () => {
   return prisma.achievement.findMany({
-    where: { visibility: "PUBLIC" },
+    where: { visibility: "PUBLIC", isApproved: true },
     orderBy: { createdAt: "desc" },
     include: {
       user: {

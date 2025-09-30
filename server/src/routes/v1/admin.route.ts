@@ -12,6 +12,8 @@ import {
   rejectPublication,
   toggleUserApproval,
   updateUserRole,
+  deleteAchievementAdmin,
+  deletePublicationAdmin,
 } from "../../controllers/admin.controller";
 import { isAdmin, isAuthenticated } from "../../middlewares/auth.middleware";
 
@@ -31,10 +33,12 @@ router.delete("/users/:id", deleteUser);
 router.get("/achievements", getAllAchievements);
 router.patch("/achievements/:id/approve", approveAchievement);
 router.patch("/achievements/:id/reject", rejectAchievement);
+router.delete("/achievements/:id", deleteAchievementAdmin);
 
 // Publications
 router.get("/publications", getAllPublications);
 router.patch("/publications/:id/approve", approvePublication);
 router.patch("/publications/:id/reject", rejectPublication);
+router.delete("/publications/:id", deletePublicationAdmin);
 
 export default router;

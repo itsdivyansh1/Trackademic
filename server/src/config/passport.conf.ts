@@ -47,6 +47,7 @@ passport.deserializeUser(async (id: string, done) => {
         stdId: true,
         role: true,
         isApproved: true,
+        profileImage: true,
         createdAt: true,
         updatedAt: true,
       },

@@ -25,5 +25,17 @@ export const isFaculty = (req: Request, res: Response, next: NextFunction) => {
     return next();
   }
 
-  res.status(403).json({ error: "Frobidden: Faculty only" });
+  res.status(403).json({ error: "Forbidden: Faculty only" });
+};
+
+export const isFacultyOrAdmin = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const role = (req.user as any)?.role;
+  if (role === "FACULTY" || role === "ADMIN") {
+    return next();
+  }
+  res.status(403).json({ error: "Forbidden: Faculty or Admin only" });
 };

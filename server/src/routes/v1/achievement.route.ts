@@ -30,8 +30,8 @@ const router = Router();
 // CREATE achievement with file upload
 router.post("/", isAuthenticated, uploadAchievement.single("file"), create);
 
-// LIST public achievements for current user
-router.get("/public", isAuthenticated, listPublicAchievements);
+// LIST public achievements (no auth needed)
+router.get("/public", listPublicAchievements);
 
 // LIST all achievements for logged-in user (public + private)
 router.get("/my", isAuthenticated, listAllAchievements);

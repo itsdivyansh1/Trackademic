@@ -7,6 +7,7 @@ import { Award } from "@/assets/outline/Award";
 import { BookOpen } from "@/assets/outline/BookeOpen";
 import Cogwheel from "@/assets/outline/Cogwheel";
 import { House2 } from "@/assets/outline/House2";
+import { User } from "lucide-react";
 import { NavMain } from "@/components/sidebar/nav-main";
 import { NavSecondary } from "@/components/sidebar/nav-sec";
 import { NavUser } from "@/components/sidebar/nav-user";
@@ -27,9 +28,19 @@ import { usePathname } from "next/navigation";
 const data = {
   navMain: [
     {
-      title: "Home",
-      url: "/app/home",
+      title: "Dashboard",
+      url: "/app/dashboard",
       icon: House2,
+    },
+    {
+      title: "Explore",
+      url: "/app/explore",
+      icon: BookOpen,
+    },
+    {
+      title: "Publications",
+      url: "/app/publications",
+      icon: BookOpen,
     },
     {
       title: "Achievements",
@@ -37,15 +48,15 @@ const data = {
       icon: Award,
     },
     {
-      title: "Publications",
-      url: "/app/publications",
-      icon: BookOpen,
+      title: "Profile",
+      url: "/app/profile",
+      icon: User,
     },
   ],
   navSec: [
     {
       name: "Settings",
-      url: "#",
+      url: "/app/settings",
       icon: Cogwheel,
     },
     {

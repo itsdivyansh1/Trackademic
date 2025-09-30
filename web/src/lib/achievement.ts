@@ -8,6 +8,7 @@ interface Achievement {
   date: string;
   visibility: "PUBLIC" | "PRIVATE";
   fileUrl?: string;
+  user?: { id: string; name: string; email?: string; isApproved?: boolean; profileImage?: string | null };
 }
 
 export const getUserAchievements = async (): Promise<Achievement[]> => {
@@ -33,3 +34,17 @@ export const deleteAchievement = async (id: string) => {
   const res = await api.delete(`/achievement/${id}`);
   return res.data;
 };
+
+// Get all public achievements for explore page
+export const getPublicAchievements = async (): Promise<Achievement[]> => {
+  try {
+    const res = await api.get("/achievement/public");
+    return res.data.achievements;
+  } catch (error) {
+    // Fallback to user achievements if public endpoint doesn't exist
+    return getUserAchievements();
+  }
+};
+
+// Export the interface so it can be used elsewhere
+export type { Achievement };

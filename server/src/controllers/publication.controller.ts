@@ -42,12 +42,33 @@ export const create = async (req: Request, res: Response) => {
     if (!req.user) return res.status(401).json({ error: "Unauthorized" });
 
     const validated = ResearchPublicationSchema.parse(req.body);
+    // Normalize authors: accept comma-separated string or JSON array
+    let authors = validated.authors as any;
+    if (typeof authors === "string") {
+      try {
+        const maybeJson = JSON.parse(authors);
+        if (Array.isArray(maybeJson)) {
+          authors = maybeJson;
+        } else {
+          authors = String(authors)
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+        }
+      } catch {
+        authors = String(authors)
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+    }
+
     const file = req.file as S3File | undefined;
     if (!file?.key)
       return res.status(400).json({ error: "File upload required" });
 
     const publication = await createPublication(
-      { ...validated, fileUrl: file.key },
+      { ...validated, authors, fileUrl: file.key },
       (req.user as PrismaUser).id
     );
 
@@ -116,7 +137,26 @@ export const update = async (req: Request, res: Response) => {
 
     if (body.title) updateData.title = body.title;
     if (body.abstract) updateData.abstract = body.abstract;
-    if (body.authors) updateData.authors = body.authors;
+    if (body.authors) {
+      let authors: any = body.authors;
+      if (typeof authors === "string") {
+        try {
+          const maybeJson = JSON.parse(authors);
+          authors = Array.isArray(maybeJson)
+            ? maybeJson
+            : String(authors)
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean);
+        } catch {
+          authors = String(authors)
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean);
+        }
+      }
+      updateData.authors = authors;
+    }
     if (body.journalConference)
       updateData.journalConference = body.journalConference;
     if (body.category) updateData.category = body.category;
