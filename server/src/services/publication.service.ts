@@ -3,20 +3,23 @@ import { ResearchPublicationInput } from "../types/publication.types";
 
 export const createPublication = async (
   input: ResearchPublicationInput & { fileUrl: string },
-  userId: string
+  userId: string,
+  isApproved: boolean = false // New parameter for verification result
 ) => {
   return prisma.researchPublication.create({
     data: {
       ...input,
       userId,
-      isApproved: false, // requires admin approval
+      isApproved, // Set based on verification
     },
   });
 };
 
 export const updatePublication = async (
   id: string,
-  input: Partial<ResearchPublicationInput & { fileUrl?: string }>,
+  input: Partial<
+    ResearchPublicationInput & { fileUrl?: string; isApproved?: boolean }
+  >,
   userId: string
 ) => {
   // Filter out undefined values to prevent overwriting existing data with undefined
@@ -41,7 +44,7 @@ export const updatePublication = async (
     data.publicationYear = parseInt(data.publicationYear);
   }
 
-  console.log("Service update data:", data); // Debug log
+  console.log("Service update data:", data);
 
   return prisma.researchPublication.updateMany({
     where: { id, userId },
@@ -55,7 +58,9 @@ export const deletePublication = async (id: string, userId: string) => {
   });
 };
 
-function normalizeAuthors<T extends { authors?: any }>(pub: T): T & { authors: string[] } {
+function normalizeAuthors<T extends { authors?: any }>(
+  pub: T
+): T & { authors: string[] } {
   let a = pub.authors;
   let arr: string[] = [];
   if (Array.isArray(a)) {
@@ -107,7 +112,13 @@ export const getPublicPublications = async () => {
     orderBy: { createdAt: "desc" },
     include: {
       user: {
-        select: { id: true, name: true, email: true, isApproved: true, profileImage: true },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          isApproved: true,
+          profileImage: true,
+        },
       },
     },
   });

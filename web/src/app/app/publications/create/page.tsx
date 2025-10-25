@@ -20,6 +20,7 @@ import { createPublication } from "@/lib/publication";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import z from "zod";
@@ -50,17 +51,48 @@ type PublicationForm = z.infer<typeof publicationSchema>;
 const CreatePublicationPage = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<{
+    isApproved: boolean;
+    message: string;
+  } | null>(null);
 
   const createMutation = useMutation({
     mutationFn: (formData: FormData) => createPublication(formData),
-    onSuccess: () => {
-      toast.success("Publication created!");
+    onMutate: () => {
+      setIsVerifying(true);
+      setVerificationStatus(null);
+    },
+    onSuccess: (data: any) => {
+      setIsVerifying(false);
+
+      // Show verification status
+      if (data?.verificationStatus) {
+        setVerificationStatus(data.verificationStatus);
+
+        if (data.verificationStatus.isApproved) {
+          toast.success("Publication created and auto-verified!");
+        } else {
+          toast.info("Publication created. Verification pending.", {
+            description: data.verificationStatus.message,
+          });
+        }
+      } else {
+        toast.success("Publication created!");
+      }
+
       queryClient.invalidateQueries({ queryKey: ["publications"] });
       addForm.reset();
-      router.push("/app/publications");
+
+      // Redirect after a short delay to show status
+      setTimeout(() => {
+        router.push("/app/publications");
+      }, 2000);
     },
-    onError: (err: any) =>
-      toast.error(err?.response?.data?.error || err.message),
+    onError: (err: any) => {
+      setIsVerifying(false);
+      toast.error(err?.response?.data?.error || err.message);
+    },
   });
 
   const addForm = useForm<PublicationForm>({
@@ -84,7 +116,6 @@ const CreatePublicationPage = () => {
       if (key === "file" && value) {
         formData.append(key, value);
       } else if (key === "publicationYear") {
-        // Convert to string for FormData
         formData.append(key, String(value));
       } else {
         formData.append(key, value as string);
@@ -95,6 +126,61 @@ const CreatePublicationPage = () => {
 
   return (
     <div>
+      {/* Verification Status Banner */}
+      {isVerifying && (
+        <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+          <div className="flex items-center gap-3">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></div>
+            <div>
+              <p className="font-medium text-blue-900">
+                Verifying your paper...
+              </p>
+              <p className="text-sm text-blue-700">
+                Checking DOI/ISSN/ISBN against external databases
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {verificationStatus && !isVerifying && (
+        <div
+          className={`mb-6 rounded-lg border p-4 ${
+            verificationStatus.isApproved
+              ? "border-green-200 bg-green-50"
+              : "border-yellow-200 bg-yellow-50"
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">
+              {verificationStatus.isApproved ? "✓" : "⚠️"}
+            </span>
+            <div>
+              <p
+                className={`font-medium ${
+                  verificationStatus.isApproved
+                    ? "text-green-900"
+                    : "text-yellow-900"
+                }`}
+              >
+                {verificationStatus.isApproved
+                  ? "Paper Auto-Verified!"
+                  : "Manual Verification Required"}
+              </p>
+              <p
+                className={`text-sm ${
+                  verificationStatus.isApproved
+                    ? "text-green-700"
+                    : "text-yellow-700"
+                }`}
+              >
+                {verificationStatus.message}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Form {...addForm}>
         <form
           onSubmit={addForm.handleSubmit(onAddSubmit)}
@@ -220,7 +306,7 @@ const CreatePublicationPage = () => {
               <FormItem>
                 <FormLabel>Visibility</FormLabel>
                 <Select
-                  value={field.value || "PUBLIC"} // ensure default
+                  value={field.value || "PUBLIC"}
                   onValueChange={(val) => field.onChange(val)}
                 >
                   <SelectTrigger>
@@ -242,7 +328,9 @@ const CreatePublicationPage = () => {
             name="file"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Upload File</FormLabel>
+                <FormLabel>
+                  Upload File (PDF Required for Verification)
+                </FormLabel>
                 <div
                   className="cursor-pointer rounded-lg border-2 border-dashed border-gray-300 p-4 text-center transition hover:border-gray-500"
                   onClick={() => document.getElementById("pubFile")?.click()}
@@ -256,16 +344,25 @@ const CreatePublicationPage = () => {
                     type="file"
                     id="pubFile"
                     className="hidden"
+                    accept=".pdf"
                     onChange={(e) => field.onChange(e.target.files?.[0])}
                   />
                 </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  PDF will be automatically scanned for DOI/ISSN/ISBN
+                  verification
+                </p>
                 <FormMessage />
               </FormItem>
             )}
           />
 
-          <Button type="submit" className="w-full">
-            Create Publication
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isVerifying || createMutation.isPending}
+          >
+            {isVerifying ? "Verifying Paper..." : "Create Publication"}
           </Button>
         </form>
       </Form>

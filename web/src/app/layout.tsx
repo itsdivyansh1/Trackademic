@@ -32,11 +32,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        className={`${inter.variable} ${geistMono.variable} ${domineSerif.variable} font-sans antialiased selection:bg-blue-400/30 overflow-x-hidden`}
+        className={`${inter.variable} ${geistMono.variable} ${domineSerif.variable} overflow-x-hidden font-sans antialiased selection:bg-blue-400/30`}
       >
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
+          defaultTheme="light"
           enableSystem
           disableTransitionOnChange
         >

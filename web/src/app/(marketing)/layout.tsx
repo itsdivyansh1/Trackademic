@@ -5,9 +5,9 @@ export default function MarketingLayout({
 }>) {
   return (
     <>
-      <h1>Navbar</h1>
+      {/* <h1>Navbar</h1> */}
       {children}
-      <h1>Footer</h1>
+      {/* <h1>Footer</h1> */}
     </>
   );
 }

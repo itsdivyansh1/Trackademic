@@ -1,5 +1,5 @@
 "use client";
-import { EyeIcon, EyeOffIcon, GalleryVerticalEnd, Loader } from "lucide-react";
+import { EyeIcon, EyeOffIcon, Loader } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +24,7 @@ import { useId, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
+import TrackademicLogo from "../logo";
 
 const formSchema = z.object({
   email: z.email(),
@@ -83,15 +84,16 @@ export function LoginForm({
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="flex flex-col gap-6">
             <div className="flex flex-col items-center gap-2">
-              <a
-                href="#"
+              <Link
+                href="/"
                 className="flex flex-col items-center gap-2 font-medium"
               >
                 <div className="flex size-8 items-center justify-center rounded-md">
-                  <GalleryVerticalEnd className="size-6" />
+                  {/* <GalleryVerticalEnd className="size-6" /> */}
+                  <TrackademicLogo />
                 </div>
                 <span className="sr-only">Trackademic</span>
-              </a>
+              </Link>
               <h1 className="text-xl font-bold">Welcome to Trackademic.</h1>
               <div className="text-center text-sm">
                 Don&apos;t have an account?{" "}

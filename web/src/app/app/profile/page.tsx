@@ -1,31 +1,25 @@
 "use client";
 
-import * as React from "react";
-import { useQuery } from "@tanstack/react-query";
-import { 
-  Mail,
-  Award,
-  BookOpen,
-  Edit
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getProfile } from "@/lib/auth";
-
+import { useQuery } from "@tanstack/react-query";
+import { Award, BookOpen, Edit, Mail } from "lucide-react";
+import Link from "next/link";
 
 export default function ProfilePage() {
-  const { data: userData, isLoading } = useQuery({ 
-    queryKey: ["profile"], 
-    queryFn: getProfile 
+  const { data: userData, isLoading } = useQuery({
+    queryKey: ["profile"],
+    queryFn: getProfile,
   });
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex min-h-[400px] items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <div className="border-primary mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2"></div>
           <p className="text-muted-foreground">Loading profile...</p>
         </div>
       </div>
@@ -35,31 +29,35 @@ export default function ProfilePage() {
   const user = userData?.user;
   if (!user) {
     return (
-      <div className="text-center py-12">
-        <h3 className="text-lg font-semibold mb-2">Profile not found</h3>
-        <p className="text-muted-foreground">Please log in to view your profile.</p>
+      <div className="py-12 text-center">
+        <h3 className="mb-2 text-lg font-semibold">Profile not found</h3>
+        <p className="text-muted-foreground">
+          Please log in to view your profile.
+        </p>
       </div>
     );
   }
-
 
   return (
     <div className="space-y-6">
       {/* Profile Header */}
       <Card>
         <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row sm:items-start gap-6">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
             {/* Avatar and Basic Info */}
-            <div className="flex flex-col items-center sm:items-start gap-4">
-              <Avatar className="size-32 border-4 border-background shadow-lg">
+            <div className="flex flex-col items-center gap-4 sm:items-start">
+              <Avatar className="border-background size-32 border-4 shadow-lg">
                 <AvatarImage src={user.profileImage} />
                 <AvatarFallback className="text-2xl">
-                  {user.name?.split(" ").map((n: string) => n[0]).join("") || "U"}
+                  {user.name
+                    ?.split(" ")
+                    .map((n: string) => n[0])
+                    .join("") || "U"}
                 </AvatarFallback>
               </Avatar>
-              
+
               <div className="text-center sm:text-left">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="mb-1 flex items-center gap-2">
                   <h1 className="text-2xl font-bold">{user.name || "User"}</h1>
                   {user.isApproved && (
                     <Badge className="bg-gradient-to-r from-blue-500 to-violet-500 text-white">
@@ -68,7 +66,7 @@ export default function ProfilePage() {
                   )}
                 </div>
                 <p className="text-muted-foreground mb-2">{user.email}</p>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="text-muted-foreground flex items-center gap-2 text-sm">
                   <span>Role: {user.role}</span>
                 </div>
               </div>
@@ -77,12 +75,14 @@ export default function ProfilePage() {
             {/* Actions */}
             <div className="flex-1">
               <div className="flex gap-2">
-                <Button>
-                  <Edit className="size-4 mr-2" />
-                  Edit Profile
+                <Button asChild>
+                  <Link href={"/app/settings"}>
+                    <Edit className="mr-2 size-4" />
+                    Edit Profile
+                  </Link>
                 </Button>
                 <Button variant="outline">
-                  <Mail className="size-4 mr-2" />
+                  <Mail className="mr-2 size-4" />
                   {user.email}
                 </Button>
               </div>
@@ -99,19 +99,27 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
-              <label className="text-sm font-medium text-muted-foreground">Name</label>
-              <p className="text-sm">{user.name || 'Not set'}</p>
+              <label className="text-muted-foreground text-sm font-medium">
+                Name
+              </label>
+              <p className="text-sm">{user.name || "Not set"}</p>
             </div>
             <div>
-              <label className="text-sm font-medium text-muted-foreground">Email</label>
+              <label className="text-muted-foreground text-sm font-medium">
+                Email
+              </label>
               <p className="text-sm">{user.email}</p>
             </div>
             <div>
-              <label className="text-sm font-medium text-muted-foreground">Role</label>
+              <label className="text-muted-foreground text-sm font-medium">
+                Role
+              </label>
               <p className="text-sm capitalize">{user.role?.toLowerCase()}</p>
             </div>
             <div>
-              <label className="text-sm font-medium text-muted-foreground">Status</label>
+              <label className="text-muted-foreground text-sm font-medium">
+                Status
+              </label>
               <Badge variant={user.isApproved ? "default" : "secondary"}>
                 {user.isApproved ? "Approved" : "Pending Approval"}
               </Badge>
@@ -125,21 +133,20 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent className="space-y-3">
             <Button className="w-full justify-start">
-              <BookOpen className="size-4 mr-2" />
+              <BookOpen className="mr-2 size-4" />
               Add Publication
             </Button>
             <Button variant="outline" className="w-full justify-start">
-              <Award className="size-4 mr-2" />
+              <Award className="mr-2 size-4" />
               Add Achievement
             </Button>
             <Button variant="outline" className="w-full justify-start">
-              <Edit className="size-4 mr-2" />
+              <Edit className="mr-2 size-4" />
               Edit Profile
             </Button>
           </CardContent>
         </Card>
       </div>
-
     </div>
   );
 }

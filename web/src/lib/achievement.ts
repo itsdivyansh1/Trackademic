@@ -8,7 +8,14 @@ interface Achievement {
   date: string;
   visibility: "PUBLIC" | "PRIVATE";
   fileUrl?: string;
-  user?: { id: string; name: string; email?: string; isApproved?: boolean; profileImage?: string | null };
+  isApproved?: Boolean;
+  user?: {
+    id: string;
+    name: string;
+    email?: string;
+    isApproved?: boolean;
+    profileImage?: string | null;
+  };
 }
 
 export const getUserAchievements = async (): Promise<Achievement[]> => {
