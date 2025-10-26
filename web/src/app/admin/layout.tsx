@@ -1,7 +1,28 @@
+"use client";
+
 import Link from "next/link";
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
+import { logoutUser } from "@/lib/auth";
+import { useRouter } from "next/navigation";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await logoutUser();
+      router.push("/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
   return (
     <div className="flex h-screen">
       {/* Sidebar */}
@@ -33,6 +54,19 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             Publications
           </Link>
         </nav>
+        
+        {/* Logout Button */}
+        <div className="mt-8 pt-4 border-t border-gray-700">
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-white hover:bg-gray-700"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+          >
+            <LogOut className="mr-2 size-4" />
+            {isLoggingOut ? "Logging out..." : "Logout"}
+          </Button>
+        </div>
       </aside>
 
       {/* Content */}

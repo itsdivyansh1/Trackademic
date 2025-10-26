@@ -8,9 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Award, BookOpen, TrendingUp, Loader } from "lucide-react";
+import { Users, Award, BookOpen, TrendingUp, Loader, Download } from "lucide-react";
 
 export default function AdminDashboardPage() {
+  const [isExporting, setIsExporting] = React.useState(false);
+
   const usersStats = useQuery({
     queryKey: ["admin-users-stats"],
     queryFn: async () => {
@@ -63,6 +65,37 @@ export default function AdminDashboardPage() {
   const loading = usersStats.isLoading || achievementsQuery.isLoading || publicationsQuery.isLoading;
   const errored = usersStats.isError || achievementsQuery.isError || publicationsQuery.isError;
 
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      const response = await api.get("/admin/export", {
+        responseType: 'blob',
+      });
+      
+      // Create blob link to download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Get filename from response headers or use default
+      const contentDisposition = response.headers['content-disposition'];
+      const filename = contentDisposition 
+        ? contentDisposition.split('filename=')[1]?.replace(/"/g, '')
+        : `trackademic-export-${new Date().toISOString().split('T')[0]}.xlsx`;
+      
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Failed to export data. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -74,6 +107,19 @@ export default function AdminDashboardPage() {
           <Button asChild variant="outline"><Link href="/admin/achievements">Manage Achievements</Link></Button>
           <Button asChild variant="outline"><Link href="/admin/publications">Manage Publications</Link></Button>
           <Button asChild><Link href="/admin/users">Manage Users</Link></Button>
+          <Button 
+            onClick={handleExport} 
+            disabled={isExporting || loading}
+            variant="outline"
+            className="gap-2"
+          >
+            {isExporting ? (
+              <Loader className="size-4 animate-spin" />
+            ) : (
+              <Download className="size-4" />
+            )}
+            Export Data
+          </Button>
         </div>
       </div>
 

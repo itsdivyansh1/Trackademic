@@ -8,6 +8,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import Link from "next/link";
+import { useLanguage } from "@/contexts/language-context";
 
 export function NavMain({
   items,
@@ -19,6 +20,8 @@ export function NavMain({
     isActive?: boolean;
   }[];
 }) {
+  const { t } = useLanguage();
+  
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
@@ -28,7 +31,7 @@ export function NavMain({
             <SidebarMenuButton asChild isActive={item.isActive}>
               <Link href={item.url}>
                 {item.icon && <item.icon className="h-5 w-5" />}
-                <span>{item.title}</span>
+                <span>{t(`nav.${item.title.toLowerCase()}`) || item.title}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

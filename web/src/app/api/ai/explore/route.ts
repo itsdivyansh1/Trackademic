@@ -83,6 +83,8 @@ export async function POST(req: NextRequest) {
       "You may also suggest related papers, keywords, and search strategies based on the title/DOI/authors provided.",
       "Format your answer with clear sections and bullet points when useful.",
       "Keep answers grounded to the provided context; do not fabricate citations.",
+      "Respond in clear, concise markdown format. Do NOT include section headers like 'Current Paper Details' or 'Note on Information Limitations' unless specifically asked.",
+      "Provide a direct, well-formatted answer to the user's question.",
     ].join("\n");
 
     const baseParts: any[] = [

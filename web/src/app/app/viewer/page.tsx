@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { getPublicPublications, type Publication } from "@/lib/publication";
 import { getPublicAchievements, type Achievement } from "@/lib/achievement";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 function renderAuthors(a: any): string {
   if (Array.isArray(a)) return a.join(", ");
@@ -165,8 +167,16 @@ function ChatPanel({
         )}
         {messages.map((m, i) => (
           <div key={i} className={m.role === "user" ? "text-right" : "text-left"}>
-            <Card className={`inline-block max-w-[90%] whitespace-pre-wrap p-3 text-sm ${m.role === "user" ? "bg-primary text-primary-foreground" : ""}`}>
-              {m.content}
+            <Card className={`inline-block max-w-[90%] p-4 text-sm ${m.role === "user" ? "bg-primary text-primary-foreground" : ""}`}>
+              {m.role === "user" ? (
+                <div className="whitespace-pre-wrap break-words">{m.content}</div>
+              ) : (
+                <div className="markdown-content break-words">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {m.content}
+                  </ReactMarkdown>
+                </div>
+              )}
             </Card>
           </div>
         ))}

@@ -14,9 +14,12 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { getProfile, logoutUser } from "@/lib/auth";
+import { getProfile, logoutUser, updateProfile } from "@/lib/auth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLanguage } from "@/contexts/language-context";
+import { useS3Url } from "@/hooks/use-s3-url";
 import {
+  FileText,
   LogOut,
   Monitor,
   Moon,
@@ -30,88 +33,114 @@ import { useTheme } from "next-themes";
 import * as React from "react";
 import { toast } from "sonner";
 
-// Mock settings data
-const userSettings = {
-  profile: {
-    name: "Dr. Sarah Chen",
-    email: "sarah.chen@university.edu",
-    institution: "MIT Climate Lab",
-    department: "Environmental Science",
-    title: "Associate Professor",
-    bio: "I'm a climate scientist specializing in machine learning applications for environmental research. My work focuses on improving climate prediction models through advanced data analysis techniques.",
-    orcid: "0000-0002-1825-0097",
-    website: "https://sarah-chen.com",
-    profileImage: null,
-  },
-  notifications: {
-    emailNotifications: true,
-    pushNotifications: true,
-    achievementAlerts: true,
-    publicationUpdates: true,
-    collaborationRequests: true,
-    weeklyDigest: false,
-    mentionAlerts: true,
-    deadlineReminders: true,
-  },
-  privacy: {
-    profileVisibility: "public",
-    publicationsVisibility: "public",
-    achievementsVisibility: "public",
-    collaborationsVisibility: "public",
-    allowDirectMessages: true,
-    showOnlineStatus: true,
-    allowProfileIndexing: true,
-  },
-  preferences: {
-    theme: "system",
-    language: "en",
-    timezone: "America/New_York",
-    dateFormat: "MM/DD/YYYY",
-    emailFrequency: "immediate",
-  },
-  account: {
-    createdAt: "2023-01-15",
-    lastLogin: "2024-02-25",
-    accountType: "faculty",
-    subscription: "premium",
-    storageUsed: 2.4, // GB
-    storageLimit: 10, // GB
-  },
-};
-
 export default function SettingsPage() {
   const { data: userData } = useQuery({
     queryKey: ["profile"],
     queryFn: getProfile,
+    staleTime: 1000 * 60 * 10, // 10 minutes
+    gcTime: 1000 * 60 * 60, // 1 hour cache
   });
   const user = userData?.user;
   const { theme, setTheme } = useTheme();
+  const { language, setLanguage, t } = useLanguage();
+  const profileImageUrl = useS3Url(user?.profileImage);
 
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = React.useState("profile");
-  const [settings, setSettings] = React.useState(userSettings);
   const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
+
+  // Initialize settings with real user data
+  const [settings, setSettings] = React.useState({
+    profile: {
+      name: user?.name || "",
+      email: user?.email || "",
+      phone: user?.phone || "",
+      department: user?.department || "",
+      stdId: user?.stdId || "",
+      profileImage: user?.profileImage || null,
+    },
+    preferences: {
+      theme: "system",
+      language: "en",
+    },
+    cv: {
+      template: "MODERN",
+      includePhoto: true,
+      includeAddress: true,
+      includeSummary: true,
+      includePublications: true,
+      includeAchievements: true,
+      maxPublications: 10,
+      maxAchievements: 10,
+    },
+  });
 
   const logout = useMutation({
     mutationFn: logoutUser,
     onSuccess: () => (window.location.href = "/login"),
   });
 
-  // Simulated save mutation
-  const saveMutation = useMutation({
-    mutationFn: async (updatedSettings: typeof userSettings) => {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      return updatedSettings;
+  // Real save mutation for profile
+  const saveProfileMutation = useMutation({
+    mutationFn: async (profileData: any) => {
+      const formData = new FormData();
+      formData.append("name", profileData.name);
+      formData.append("phone", profileData.phone);
+      formData.append("department", profileData.department);
+      if (profileData.stdId) formData.append("stdId", profileData.stdId);
+      
+      return updateProfile(formData);
     },
     onSuccess: () => {
-      toast.success("Settings saved successfully!");
+      toast.success("Profile updated successfully!");
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
       setHasUnsavedChanges(false);
     },
-    onError: () => {
-      toast.error("Failed to save settings. Please try again.");
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || "Failed to update profile");
     },
   });
+
+  // Profile image upload mutation
+  const uploadImageMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("profileImage", file);
+      formData.append("name", settings.profile.name);
+      formData.append("phone", settings.profile.phone);
+      formData.append("department", settings.profile.department);
+      if (settings.profile.stdId) formData.append("stdId", settings.profile.stdId);
+      
+      return updateProfile(formData);
+    },
+    onSuccess: () => {
+      toast.success("Profile image updated successfully!");
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      setHasUnsavedChanges(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || "Failed to update profile image");
+    },
+  });
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error("Please select a valid image file");
+        return;
+      }
+      
+      // Validate file size (2MB limit)
+      if (file.size > 2 * 1024 * 1024) {
+        toast.error("Image size must be less than 2MB");
+        return;
+      }
+      
+      uploadImageMutation.mutate(file);
+    }
+  };
 
   const handleInputChange = (section: string, field: string, value: any) => {
     setSettings((prev) => ({
@@ -125,19 +154,27 @@ export default function SettingsPage() {
   };
 
   const handleSave = () => {
-    saveMutation.mutate(settings);
+    if (activeTab === "profile") {
+      saveProfileMutation.mutate(settings.profile);
+    } else {
+      // For other tabs, just show success (no backend integration yet)
+      toast.success("Settings saved successfully!");
+      setHasUnsavedChanges(false);
+    }
   };
 
-  // Update user profile data when available
+  // Update settings when user data loads
   React.useEffect(() => {
     if (user) {
       setSettings((prev) => ({
         ...prev,
         profile: {
-          ...prev.profile,
-          name: user.name || prev.profile.name,
-          email: user.email || prev.profile.email,
-          profileImage: user.profileImage || prev.profile.profileImage,
+          name: user.name || "",
+          email: user.email || "",
+          phone: user.phone || "",
+          department: user.department || "",
+          stdId: user.stdId || "",
+          profileImage: user.profileImage || null,
         },
       }));
     }
@@ -148,21 +185,21 @@ export default function SettingsPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Settings</h1>
+          <h1 className="text-2xl font-bold">{t('settings.title')}</h1>
           <p className="text-muted-foreground">
-            Manage your account settings and preferences
+            {t('settings.subtitle')}
           </p>
         </div>
         <div className="flex items-center gap-2">
           {hasUnsavedChanges && (
-            <Button onClick={handleSave} disabled={saveMutation.isPending}>
+            <Button onClick={handleSave} disabled={saveProfileMutation.isPending}>
               <Save className="mr-2 size-4" />
-              {saveMutation.isPending ? "Saving..." : "Save Changes"}
+              {saveProfileMutation.isPending ? t('settings.saving') : t('settings.save')}
             </Button>
           )}
           <Button variant="outline" onClick={() => logout.mutate()}>
             <LogOut className="mr-2 size-4" />
-            Log out
+            {t('settings.logout')}
           </Button>
         </div>
       </div>
@@ -172,9 +209,10 @@ export default function SettingsPage() {
         onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="preferences">Preferences</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="profile">{t('settings.profile')}</TabsTrigger>
+          <TabsTrigger value="preferences">{t('settings.preferences')}</TabsTrigger>
+          <TabsTrigger value="cv">{t('settings.cv')}</TabsTrigger>
         </TabsList>
 
         {/* Profile Settings */}
@@ -183,30 +221,40 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="size-5" />
-                Profile Information
+                {t('settings.profile.title')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Avatar */}
               <div className="flex items-center gap-4">
                 <Avatar className="size-20">
-                  <AvatarImage
-                    src={settings.profile.profileImage || undefined}
-                  />
+                  <AvatarImage src={profileImageUrl} />
                   <AvatarFallback className="text-lg">
-                    {settings.profile.name
-                      .split(" ")
+                    {user?.name
+                      ?.split(" ")
                       .map((n: string) => n[0])
-                      .join("")}
+                      .join("") || "U"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="space-y-2">
-                  <Button variant="outline" size="sm">
+                  <input
+                    type="file"
+                    id="profile-image"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => document.getElementById('profile-image')?.click()}
+                    disabled={uploadImageMutation.isPending}
+                  >
                     <Upload className="mr-2 size-4" />
-                    Upload Photo
+                    {uploadImageMutation.isPending ? t('settings.profile.uploading') : t('settings.profile.uploadPhoto')}
                   </Button>
                   <p className="text-muted-foreground text-xs">
-                    JPG, PNG or GIF. Max size 2MB.
+                    {t('settings.profile.imageFormat')}
                   </p>
                 </div>
               </div>
@@ -214,7 +262,7 @@ export default function SettingsPage() {
               {/* Personal Information */}
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
+                  <Label htmlFor="name">{t('settings.profile.name')}</Label>
                   <Input
                     id="name"
                     value={settings.profile.name}
@@ -224,32 +272,28 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">{t('settings.profile.email')}</Label>
                   <Input
                     id="email"
                     type="email"
                     value={settings.profile.email}
-                    onChange={(e) =>
-                      handleInputChange("profile", "email", e.target.value)
-                    }
+                    disabled
+                    className="bg-gray-100"
                   />
+                  <p className="text-xs text-muted-foreground">{t('settings.profile.emailDisabled')}</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="institution">Institution</Label>
+                  <Label htmlFor="phone">{t('settings.profile.phone')}</Label>
                   <Input
-                    id="institution"
-                    value={settings.profile.institution}
+                    id="phone"
+                    value={settings.profile.phone}
                     onChange={(e) =>
-                      handleInputChange(
-                        "profile",
-                        "institution",
-                        e.target.value,
-                      )
+                      handleInputChange("profile", "phone", e.target.value)
                     }
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="department">Department</Label>
+                  <Label htmlFor="department">{t('settings.profile.department')}</Label>
                   <Input
                     id="department"
                     value={settings.profile.department}
@@ -258,51 +302,18 @@ export default function SettingsPage() {
                     }
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="title">Job Title</Label>
-                  <Input
-                    id="title"
-                    value={settings.profile.title}
-                    onChange={(e) =>
-                      handleInputChange("profile", "title", e.target.value)
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="orcid">ORCID ID</Label>
-                  <Input
-                    id="orcid"
-                    value={settings.profile.orcid}
-                    onChange={(e) =>
-                      handleInputChange("profile", "orcid", e.target.value)
-                    }
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="website">Personal Website</Label>
-                <Input
-                  id="website"
-                  type="url"
-                  value={settings.profile.website}
-                  onChange={(e) =>
-                    handleInputChange("profile", "website", e.target.value)
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="bio">Bio</Label>
-                <Textarea
-                  id="bio"
-                  rows={4}
-                  value={settings.profile.bio}
-                  onChange={(e) =>
-                    handleInputChange("profile", "bio", e.target.value)
-                  }
-                  placeholder="Tell us about your research interests and background..."
-                />
+                {user?.role === "STUDENT" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="stdId">{t('settings.profile.studentId')}</Label>
+                    <Input
+                      id="stdId"
+                      value={settings.profile.stdId}
+                      onChange={(e) =>
+                        handleInputChange("profile", "stdId", e.target.value)
+                      }
+                    />
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -314,16 +325,16 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Palette className="size-5" />
-                Display & Language
+                {t('settings.preferences.title')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <Label htmlFor="theme">Theme</Label>
+                    <Label htmlFor="theme">{t('settings.preferences.theme')}</Label>
                     <p className="text-muted-foreground text-sm">
-                      Choose your preferred theme
+                      {t('settings.preferences.themeDesc')}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -335,7 +346,7 @@ export default function SettingsPage() {
                       }}
                       size="sm"
                     >
-                      <Sun className="mr-2 size-4" /> Light
+                      <Sun className="mr-2 size-4" /> {t('settings.preferences.light')}
                     </Button>
                     <Button
                       variant={theme === "dark" ? "default" : "outline"}
@@ -345,7 +356,7 @@ export default function SettingsPage() {
                       }}
                       size="sm"
                     >
-                      <Moon className="mr-2 size-4" /> Dark
+                      <Moon className="mr-2 size-4" /> {t('settings.preferences.dark')}
                     </Button>
                     <Button
                       variant={theme === "system" ? "default" : "outline"}
@@ -355,91 +366,32 @@ export default function SettingsPage() {
                       }}
                       size="sm"
                     >
-                      <Monitor className="mr-2 size-4" /> System
+                      <Monitor className="mr-2 size-4" /> {t('settings.preferences.system')}
                     </Button>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <Label htmlFor="language">Language</Label>
+                    <Label htmlFor="language">{t('settings.preferences.language')}</Label>
                     <p className="text-muted-foreground text-sm">
-                      Select your preferred language
+                      {t('settings.preferences.languageDesc')}
                     </p>
                   </div>
                   <Select
-                    value={settings.preferences.language}
-                    onValueChange={(value) =>
-                      handleInputChange("preferences", "language", value)
-                    }
+                    value={language}
+                    onValueChange={(value: 'en' | 'hi' | 'mr') => {
+                      setLanguage(value);
+                      handleInputChange("preferences", "language", value);
+                    }}
                   >
                     <SelectTrigger className="w-32">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="en">English</SelectItem>
-                      <SelectItem value="es">Español</SelectItem>
-                      <SelectItem value="fr">Français</SelectItem>
-                      <SelectItem value="de">Deutsch</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label htmlFor="timezone">Timezone</Label>
-                    <p className="text-muted-foreground text-sm">
-                      Your local timezone
-                    </p>
-                  </div>
-                  <Select
-                    value={settings.preferences.timezone}
-                    onValueChange={(value) =>
-                      handleInputChange("preferences", "timezone", value)
-                    }
-                  >
-                    <SelectTrigger className="w-48">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="America/New_York">
-                        Eastern Time
-                      </SelectItem>
-                      <SelectItem value="America/Chicago">
-                        Central Time
-                      </SelectItem>
-                      <SelectItem value="America/Denver">
-                        Mountain Time
-                      </SelectItem>
-                      <SelectItem value="America/Los_Angeles">
-                        Pacific Time
-                      </SelectItem>
-                      <SelectItem value="Europe/London">London</SelectItem>
-                      <SelectItem value="Europe/Paris">Paris</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <Label htmlFor="dateFormat">Date Format</Label>
-                    <p className="text-muted-foreground text-sm">
-                      How dates are displayed
-                    </p>
-                  </div>
-                  <Select
-                    value={settings.preferences.dateFormat}
-                    onValueChange={(value) =>
-                      handleInputChange("preferences", "dateFormat", value)
-                    }
-                  >
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="MM/DD/YYYY">MM/DD/YYYY</SelectItem>
-                      <SelectItem value="DD/MM/YYYY">DD/MM/YYYY</SelectItem>
-                      <SelectItem value="YYYY-MM-DD">YYYY-MM-DD</SelectItem>
+                      <SelectItem value="hi">हिंदी</SelectItem>
+                      <SelectItem value="mr">मराठी</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -447,7 +399,176 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* CV Settings */}
+        <TabsContent value="cv" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="size-5" />
+                CV Generation Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label htmlFor="cvTemplate">Default CV Template</Label>
+                    <p className="text-muted-foreground text-sm">
+                      Choose your preferred CV template
+                    </p>
+                  </div>
+                  <Select
+                    value={settings.cv?.template || "MODERN"}
+                    onValueChange={(value) =>
+                      handleInputChange("cv", "template", value)
+                    }
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="MODERN">Modern</SelectItem>
+                      <SelectItem value="CLASSIC">Classic</SelectItem>
+                      <SelectItem value="MINIMAL">Minimal</SelectItem>
+                      <SelectItem value="CREATIVE">Creative</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label htmlFor="includePhoto">Include Profile Photo</Label>
+                      <p className="text-muted-foreground text-sm">
+                        Show your profile photo in the CV
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      id="includePhoto"
+                      checked={settings.cv?.includePhoto ?? true}
+                      onChange={(e) =>
+                        handleInputChange("cv", "includePhoto", e.target.checked)
+                      }
+                      className="rounded"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label htmlFor="includeAddress">Include Address</Label>
+                      <p className="text-muted-foreground text-sm">
+                        Show your address in the CV
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      id="includeAddress"
+                      checked={settings.cv?.includeAddress ?? true}
+                      onChange={(e) =>
+                        handleInputChange("cv", "includeAddress", e.target.checked)
+                      }
+                      className="rounded"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label htmlFor="includeSummary">Include Professional Summary</Label>
+                      <p className="text-muted-foreground text-sm">
+                        Show your professional summary in the CV
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      id="includeSummary"
+                      checked={settings.cv?.includeSummary ?? true}
+                      onChange={(e) =>
+                        handleInputChange("cv", "includeSummary", e.target.checked)
+                      }
+                      className="rounded"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label htmlFor="includePublications">Include Publications</Label>
+                      <p className="text-muted-foreground text-sm">
+                        Automatically include your publications in the CV
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      id="includePublications"
+                      checked={settings.cv?.includePublications ?? true}
+                      onChange={(e) =>
+                        handleInputChange("cv", "includePublications", e.target.checked)
+                      }
+                      className="rounded"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label htmlFor="includeAchievements">Include Achievements</Label>
+                      <p className="text-muted-foreground text-sm">
+                        Automatically include your achievements in the CV
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      id="includeAchievements"
+                      checked={settings.cv?.includeAchievements ?? true}
+                      onChange={(e) =>
+                        handleInputChange("cv", "includeAchievements", e.target.checked)
+                      }
+                      className="rounded"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="maxPublications">Max Publications</Label>
+                    <Input
+                      id="maxPublications"
+                      type="number"
+                      min="1"
+                      max="50"
+                      value={settings.cv?.maxPublications || 10}
+                      onChange={(e) =>
+                        handleInputChange("cv", "maxPublications", parseInt(e.target.value))
+                      }
+                    />
+                    <p className="text-muted-foreground text-xs">
+                      Maximum number of publications to include
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="maxAchievements">Max Achievements</Label>
+                    <Input
+                      id="maxAchievements"
+                      type="number"
+                      min="1"
+                      max="50"
+                      value={settings.cv?.maxAchievements || 10}
+                      onChange={(e) =>
+                        handleInputChange("cv", "maxAchievements", parseInt(e.target.value))
+                      }
+                    />
+                    <p className="text-muted-foreground text-xs">
+                      Maximum number of achievements to include
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
       </Tabs>
     </div>
   );
 }
+

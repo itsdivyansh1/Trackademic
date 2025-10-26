@@ -80,7 +80,7 @@ export default function DashboardPage() {
       <WelcomeHeader />
 
       {/* Metrics Overview */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2">
         <StatCard
           title="Publications"
           value={pub}
@@ -94,20 +94,6 @@ export default function DashboardPage() {
           delta={0}
           icon={<Award className="size-4" />}
           accent="bg-amber-500/15 text-amber-500"
-        />
-        <StatCard
-          title="Active Projects"
-          value={totalProjects}
-          delta={0}
-          icon={<Target className="size-4" />}
-          accent="bg-blue-500/15 text-blue-500"
-        />
-        <StatCard
-          title="H-Index"
-          value={hIndex}
-          delta={0}
-          icon={<TrendingUp className="size-4" />}
-          accent="bg-emerald-500/15 text-emerald-500"
         />
       </div>
 

@@ -56,3 +56,27 @@ export const getUserById = async (id: string) => {
   const { password: _password, ...userWithoutPassword } = user;
   return userWithoutPassword;
 };
+
+export const updateUserProfile = async (
+  id: string,
+  data: Partial<{
+    name?: string;
+    phone?: string;
+    department?: string;
+    stdId?: string;
+  }>,
+  profileImageKey?: string
+) => {
+  const updateData: any = { ...data };
+  if (profileImageKey) {
+    updateData.profileImage = profileImageKey;
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id },
+    data: updateData,
+  });
+
+  const { password: _password, ...userWithoutPassword } = updatedUser;
+  return userWithoutPassword;
+};

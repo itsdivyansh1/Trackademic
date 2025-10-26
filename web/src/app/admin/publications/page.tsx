@@ -144,7 +144,12 @@ export default function AdminPublicationsPage() {
                       </TableCell>
                       <TableCell className="text-right space-x-2">
                         {p.fileUrl && (
-                          <a href={p.fileUrl} target="_blank" rel="noreferrer" className="text-xs inline-flex items-center gap-1 underline">
+                          <a 
+                            href={p.fileUrl} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="text-xs inline-flex items-center gap-1 underline"
+                          >
                             <ExternalLink className="size-3" /> File
                           </a>
                         )}

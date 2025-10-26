@@ -1,5 +1,6 @@
 import { ReactQueryProvider } from "@/components/providers";
 import { ThemeProvider } from "@/components/theme-provider";
+import { LanguageProvider } from "@/contexts/language-context";
 import type { Metadata } from "next";
 import { Domine, Geist_Mono, Inter } from "next/font/google";
 import { Toaster } from "sonner";
@@ -40,7 +41,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ReactQueryProvider>{children}</ReactQueryProvider>
+          <LanguageProvider>
+            <ReactQueryProvider>{children}</ReactQueryProvider>
+          </LanguageProvider>
         </ThemeProvider>
         <Toaster theme="system" richColors />
       </body>

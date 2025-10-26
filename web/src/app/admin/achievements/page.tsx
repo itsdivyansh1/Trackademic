@@ -125,7 +125,12 @@ export default function AdminAchievementsPage() {
                       </TableCell>
                       <TableCell className="text-right space-x-2">
                         {a.fileUrl && (
-                          <a href={a.fileUrl} target="_blank" rel="noreferrer" className="text-xs inline-flex items-center gap-1 underline">
+                          <a 
+                            href={a.fileUrl} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="text-xs inline-flex items-center gap-1 underline"
+                          >
                             <ExternalLink className="size-3" /> File
                           </a>
                         )}

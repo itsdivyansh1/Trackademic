@@ -14,6 +14,7 @@ import {
   updateUserRole,
   deleteAchievementAdmin,
   deletePublicationAdmin,
+  exportAllData,
 } from "../../controllers/admin.controller";
 import { isAdmin, isAuthenticated } from "../../middlewares/auth.middleware";
 
@@ -40,5 +41,8 @@ router.get("/publications", getAllPublications);
 router.patch("/publications/:id/approve", approvePublication);
 router.patch("/publications/:id/reject", rejectPublication);
 router.delete("/publications/:id", deletePublicationAdmin);
+
+// Export
+router.get("/export", exportAllData);
 
 export default router;

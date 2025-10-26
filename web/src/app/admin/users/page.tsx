@@ -29,10 +29,12 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
+import { getProfile } from "@/lib/auth";
 import {
   AlertTriangle,
   Building,
   Clock,
+  Download,
   GraduationCap,
   Loader2,
   Mail,
@@ -80,10 +82,17 @@ type ActionDialog = {
 export default function UsersPage() {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
   const [actionDialog, setActionDialog] = useState<ActionDialog>({
     isOpen: false,
     type: null,
     user: null,
+  });
+
+  // Get current admin's ID to prevent self-modification
+  const { data: currentUser } = useQuery({
+    queryKey: ["current-admin"],
+    queryFn: getProfile,
   });
 
   // Fetch users
@@ -219,6 +228,40 @@ export default function UsersPage() {
     setActionDialog({ isOpen: true, type, user, newRole });
   };
 
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      const response = await axios.get("http://localhost:8080/api/v1/admin/export", {
+        responseType: 'blob',
+        withCredentials: true,
+      });
+      
+      // Create blob link to download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Get filename from response headers or use default
+      const contentDisposition = response.headers['content-disposition'];
+      const filename = contentDisposition 
+        ? contentDisposition.split('filename=')[1]?.replace(/"/g, '')
+        : `trackademic-export-${new Date().toISOString().split('T')[0]}.xlsx`;
+      
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success("Data exported successfully!");
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error("Failed to export data. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
       case "ADMIN":
@@ -318,6 +361,19 @@ export default function UsersPage() {
               className="w-64 pl-10"
             />
           </div>
+          <Button 
+            onClick={handleExport} 
+            disabled={isExporting}
+            variant="outline"
+            className="gap-2"
+          >
+            {isExporting ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Download className="size-4" />
+            )}
+            Export All Data
+          </Button>
         </div>
       </div>
 
@@ -430,6 +486,8 @@ export default function UsersPage() {
                     ) : (
                       tabUsers.map((user) => {
                         const RoleIcon = getRoleIcon(user.role);
+                        const isCurrentUser = currentUser?.user?.id === user.id;
+                        
                         return (
                           <Card key={user.id} className="p-4">
                             <div className="flex items-center justify-between">
@@ -463,6 +521,11 @@ export default function UsersPage() {
                                     >
                                       {user.isApproved ? "Approved" : "Pending"}
                                     </Badge>
+                                    {isCurrentUser && (
+                                      <Badge variant="outline" className="text-xs">
+                                        You
+                                      </Badge>
+                                    )}
                                   </div>
 
                                   <div className="text-muted-foreground flex items-center space-x-4 text-sm">
@@ -489,73 +552,81 @@ export default function UsersPage() {
                               </div>
 
                               <div className="flex items-center gap-2">
-                                {/* Role Change */}
-                                <Select
-                                  value={user.role}
-                                  onValueChange={(newRole) => {
-                                    if (newRole !== user.role) {
-                                      openActionDialog("role", user, newRole);
-                                    }
-                                  }}
-                                  disabled={isLoading}
-                                >
-                                  <SelectTrigger className="w-[120px]">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="STUDENT">
-                                      Student
-                                    </SelectItem>
-                                    <SelectItem value="FACULTY">
-                                      Faculty
-                                    </SelectItem>
-                                    <SelectItem value="ADMIN">Admin</SelectItem>
-                                  </SelectContent>
-                                </Select>
+                                {isCurrentUser ? (
+                                  <div className="text-muted-foreground text-sm">
+                                    You cannot modify your own account
+                                  </div>
+                                ) : (
+                                  <>
+                                    {/* Role Change */}
+                                    <Select
+                                      value={user.role}
+                                      onValueChange={(newRole) => {
+                                        if (newRole !== user.role) {
+                                          openActionDialog("role", user, newRole);
+                                        }
+                                      }}
+                                      disabled={isLoading}
+                                    >
+                                      <SelectTrigger className="w-[120px]">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="STUDENT">
+                                          Student
+                                        </SelectItem>
+                                        <SelectItem value="FACULTY">
+                                          Faculty
+                                        </SelectItem>
+                                        <SelectItem value="ADMIN">Admin</SelectItem>
+                                      </SelectContent>
+                                    </Select>
 
-                                {/* Approval Toggle */}
-                                <Button
-                                  variant={
-                                    user.isApproved ? "outline" : "default"
-                                  }
-                                  size="sm"
-                                  onClick={() =>
-                                    openActionDialog(
-                                      user.isApproved ? "reject" : "approve",
-                                      user,
-                                    )
-                                  }
-                                  disabled={isLoading}
-                                >
-                                  {toggleApproveMutation.isPending ? (
-                                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                                  ) : user.isApproved ? (
-                                    <>
-                                      <UserX className="mr-1 h-4 w-4" /> Reject
-                                    </>
-                                  ) : (
-                                    <>
-                                      <UserCheck className="mr-1 h-4 w-4" />{" "}
-                                      Approve
-                                    </>
-                                  )}
-                                </Button>
+                                    {/* Approval Toggle */}
+                                    <Button
+                                      variant={
+                                        user.isApproved ? "outline" : "default"
+                                      }
+                                      size="sm"
+                                      onClick={() =>
+                                        openActionDialog(
+                                          user.isApproved ? "reject" : "approve",
+                                          user,
+                                        )
+                                      }
+                                      disabled={isLoading}
+                                    >
+                                      {toggleApproveMutation.isPending ? (
+                                        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                                      ) : user.isApproved ? (
+                                        <>
+                                          <UserX className="mr-1 h-4 w-4" /> Reject
+                                        </>
+                                      ) : (
+                                        <>
+                                          <UserCheck className="mr-1 h-4 w-4" />{" "}
+                                          Approve
+                                        </>
+                                      )}
+                                    </Button>
 
-                                {/* Delete */}
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() =>
-                                    openActionDialog("delete", user)
-                                  }
-                                  disabled={isLoading}
-                                >
-                                  {deleteMutation.isPending ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Trash2 className="h-4 w-4" />
-                                  )}
-                                </Button>
+                                    {/* Delete */}
+                                    <Button
+                                      variant="destructive"
+                                      size="sm"
+                                      onClick={() =>
+                                        openActionDialog("delete", user)
+                                      }
+                                      disabled={isLoading}
+                                    >
+                                      {deleteMutation.isPending ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <Trash2 className="h-4 w-4" />
+                                      )}
+                                    </Button>
+                                  </>
+                                )}
                               </div>
                             </div>
                           </Card>

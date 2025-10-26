@@ -78,6 +78,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     queryKey: ["profile"],
     queryFn: getProfile,
     retry: false,
+    staleTime: 1000 * 60 * 10, // 10 minutes - profile doesn't change often
+    gcTime: 1000 * 60 * 60, // 1 hour cache
   });
 
   const navMain = data.navMain.map((item) => ({
